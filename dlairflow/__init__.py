@@ -6,3 +6,5 @@ dlairflow
 
 Reusable code components for building Apache Airflow DAGs.
 """
+
+__version__ = '0.1.dev3'
