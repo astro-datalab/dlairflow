@@ -19,5 +19,3 @@ def user_scratch():
         The name of the directory.
     """
     return os.path.join('/data0', 'datalab', os.environ['USER'])
-
-

@@ -34,7 +34,8 @@ def pg_dump_schema(connection, schema, dump_dir=None):
         dump_dir = user_scratch()
     conn = BaseHook.get_connection(connection)
     return BashOperator(task_id="pg_dump",
-                        bash_command="[[ -f {{ params.dump_dir }}/{{ params.schema }}.dump ]] || pg_dump --schema={{ params.schema }} --format=c --file={{ params.dump_dir }}/{{ params.schema }}.dump",
+                        bash_command=("[[ -f {{ params.dump_dir }}/{{ params.schema }}.dump ]] || " +
+                                      "pg_dump --schema={{ params.schema }} --format=c --file={{ params.dump_dir }}/{{ params.schema }}.dump"),
                         params={'schema': schema,
                                 'dump_dir': dump_dir},
                         env={'PGUSER': conn.login,
@@ -66,7 +67,8 @@ def pg_restore_schema(connection, schema, dump_dir=None):
         dump_dir = user_scratch()
     conn = BaseHook.get_connection(connection)
     return BashOperator(task_id="pg_restore",
-                        bash_command="[[ -f {{ params.dump_dir }}/{{ params.schema }}.dump ]] && pg_restore {{ params.dump_dir }}/{{ params.schema }}.dump",
+                        bash_command=("[[ -f {{ params.dump_dir }}/{{ params.schema }}.dump ]] && " +
+                                      "pg_restore {{ params.dump_dir }}/{{ params.schema }}.dump"),
                         params={'schema': schema,
                                 'dump_dir': dump_dir},
                         env={'PGUSER': conn.login,
