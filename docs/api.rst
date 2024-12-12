@@ -5,11 +5,8 @@ dlairflow API
 .. automodule:: dlairflow
     :members:
 
-.. automodule:: dlairflow.base
+.. automodule:: dlairflow.postgresql
     :members:
 
-.. automodule:: dlairflow.sdss
-    :members:
-
-.. automodule:: dlairflow.view
+.. automodule:: dlairflow.util
     :members:

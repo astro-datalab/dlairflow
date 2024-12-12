@@ -27,7 +27,7 @@ def pg_dump_schema(connection, schema, dump_dir=None):
 
     Returns
     -------
-    BashOperator
+    :class:`~airflow.operators.bash.BashOperator`
         A BashOperator that will execute :command:`pg_dump`.
     """
     if dump_dir is None:
@@ -60,7 +60,7 @@ def pg_restore_schema(connection, schema, dump_dir=None):
 
     Returns
     -------
-    BashOperator
+    :class:`~airflow.operators.bash.BashOperator`
         A BashOperator that will execute :command:`pg_dump`.
     """
     if dump_dir is None:
