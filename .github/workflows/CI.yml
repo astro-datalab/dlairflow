@@ -16,9 +16,8 @@ jobs:
     #         fail-fast: true
     #         matrix:
     #             os: [ubuntu-latest]
-    #             # numpy-version: ['<1.19', '<1.20', '>=1.20']
     #             python-version: ['3.9', '3.10', '3.11', '3.12']
-    #             astropy-version: ['<6.0', '<6.1', '<7.0']
+    #             airflow-version: ['<2.10', '<2.11']
 
     #     steps:
     #         - name: Checkout code
@@ -32,8 +31,8 @@ jobs:
     #         - name: Install Python dependencies
     #           run: |
     #             python -m pip install --upgrade pip setuptools wheel
-    #             python -m pip install pytest pyyaml jinja2 numpy\<2.0
-    #             python -m pip install "astropy${{ matrix.astropy-version }}"
+    #             python -m pip install pytest
+    #             python -m pip install "apache-airflow${{ matrix.airflow-version }}"
     #         - name: Run the test
     #           run: pytest
 
@@ -45,6 +44,7 @@ jobs:
             matrix:
                 os: [ubuntu-latest]
                 python-version: ['3.9']
+                airflow-version: ['<2.10']
 
         steps:
             - name: Checkout code
@@ -59,6 +59,7 @@ jobs:
               run: |
                 python -m pip install --upgrade pip setuptools wheel
                 python -m pip install pytest pytest-cov coveralls
+                python -m pip install "apache-airflow${{ matrix.airflow-version }}"
             - name: Run the test with coverage
               run: pytest --cov
     #         - name: Coveralls
