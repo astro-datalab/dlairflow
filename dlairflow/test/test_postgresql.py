@@ -68,7 +68,7 @@ def test_pg_restore_schema(monkeypatch):
     assert test_operator.params['schema'] == 'dump_schema'
 
 
-def test_pg_dump_schema_alt_dir(monkeypatch):
+def test_pg_restore_schema_alt_dir(monkeypatch):
     """Test pg_restore task with alternate directory.
     """
     def mock_connection(connection):
