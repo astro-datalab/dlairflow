@@ -27,6 +27,20 @@ def test_pg_dump_schema(monkeypatch):
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
-    test_operator = pg_dump_schema("login,password,host,schema")
+    test_operator = pg_dump_schema("login,password,host,schema", "dump_schema")
+
+    print(dir(test_operator))
+
+
+def test_pg_dump_schema_alt_dir(monkeypatch):
+    """Test pg_dump task with alternate directory.
+    """
+    def mock_connection(connection):
+        conn = MockConnection(connection)
+        return conn
+
+    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
+
+    test_operator = pg_dump_schema("login,password,host,schema", "dump_schema", "dump_dir")
 
     print(dir(test_operator))
