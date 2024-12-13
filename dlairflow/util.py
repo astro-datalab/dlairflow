@@ -13,6 +13,8 @@ import os
 def user_scratch():
     """A standard, per-user scratch directory.
 
+    This function simply returns a path. It does not guarantee the directory exists.
+
     Returns
     -------
     :class:`str`

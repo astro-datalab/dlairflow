@@ -37,32 +37,30 @@ jobs:
     #         - name: Run the test
     #           run: pytest
 
-    # coverage:
-    #     name: Test coverage
-    #     runs-on: ${{ matrix.os }}
-    #     strategy:
-    #         fail-fast: false
-    #         matrix:
-    #             os: [ubuntu-latest]
-    #             python-version: ['3.9']
-    #             astropy-version: ['<6.1']
+    coverage:
+        name: Test coverage
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest]
+                python-version: ['3.9']
 
-    #     steps:
-    #         - name: Checkout code
-    #           uses: actions/checkout@v4
-    #           with:
-    #             fetch-depth: 0
-    #         - name: Set up Python ${{ matrix.python-version }}
-    #           uses: actions/setup-python@v5
-    #           with:
-    #             python-version: ${{ matrix.python-version }}
-    #         - name: Install Python dependencies
-    #           run: |
-    #             python -m pip install --upgrade pip setuptools wheel
-    #             python -m pip install pytest pyyaml jinja2 numpy\<2.0 pytest-cov coveralls
-    #             python -m pip install --upgrade "astropy${{ matrix.astropy-version }}"
-    #         - name: Run the test with coverage
-    #           run: pytest --cov
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                fetch-depth: 0
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v5
+              with:
+                python-version: ${{ matrix.python-version }}
+            - name: Install Python dependencies
+              run: |
+                python -m pip install --upgrade pip setuptools wheel
+                python -m pip install pytest pytest-cov coveralls
+            - name: Run the test with coverage
+              run: pytest --cov
     #         - name: Coveralls
     #           # uses: coverallsapp/github-action@v1.1.2
     #           # with:
