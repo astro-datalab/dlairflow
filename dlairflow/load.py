@@ -40,7 +40,9 @@ def load_table_with_fits2db(connection, schema, table, load_dir=None):
     """
     if load_dir is None:
         load_dir = user_scratch()
-    load_table_template = """fits2db -t {{ params.schema }}.{{ params.table }} {{ params.load_dir }}/{{ params.schema }}.{{ params.table }}.fits | psql"""
+    load_table_template = ("fits2db -t {{ params.schema }}.{{ params.table }} " +
+                           "{{ params.load_dir }}/{{ params.schema }}.{{ params.table }}.fits " +
+                           "| psql")
     pg_env = _connection_to_environment(connection)
     load_table = BashOperator(task_id='load_table_with_fits2db',
                               bash_command=load_table_template,
