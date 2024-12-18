@@ -1,8 +1,8 @@
 # Licensed under a BSD-style 3-clause license - see LICENSE.md.
 # -*- coding: utf-8 -*-
 """
-util
-====
+dlairflow.util
+==============
 
 Generic, low-level utility functions. Some functions may be intended
 for internal use by the package itself.

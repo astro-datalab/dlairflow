@@ -1,5 +1,7 @@
 # dlairflow
 
+[![CI](https://github.com/astro-datalab/dlairflow/actions/workflows/CI.yml/badge.svg)](https://github.com/astro-datalab/dlairflow/actions/workflows/CI.yml)
+
 Reusable code components for building Apache Airflow DAGs.
 
 ## License
