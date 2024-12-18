@@ -2,7 +2,7 @@
 dlairflow Change Log
 ====================
 
-0.1.0 (unreleased)
+0.1.0 (2024-12-18)
 ------------------
 
-* *Planned*: simply get a working Python package.
+* Initial reference tag: working Python package with full test coverage.
