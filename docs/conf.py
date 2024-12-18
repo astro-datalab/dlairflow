@@ -33,7 +33,20 @@ extensions = [
 ]
 
 templates_path = ['_templates']
+
+# List of patterns, relative to source directory, that match files and
+# directories to ignore when looking for source files.
+# This patterns also effect to html_static_path and html_extra_path
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+
+# If true, '()' will be appended to :func: etc. cross-reference text.
+add_function_parentheses = True
+
+# If true, keep warnings as "system message" paragraphs in the built documents.
+keep_warnings = True
+
+# Include functions that begin with an underscore, e.g. _private().
+napoleon_include_private_with_doc = True
 
 # We don't necessarily need a full installation to build documentation.
 autodoc_mock_imports = []
