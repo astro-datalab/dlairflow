@@ -38,7 +38,7 @@ def temporary_airflow_home(tmp_path_factory):
                                                     ('pg_restore_schema', None),
                                                     ('pg_restore_schema', 'dump_dir')])
 def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump_dir):
-    """Test pg_dump task with alternate directory.
+    """Test pg_dump tasks in various combinations.
     """
     def mock_connection(connection):
         conn = MockConnection(connection)
