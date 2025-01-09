@@ -1,6 +1,6 @@
 # dlairflow
 
-[![CI](https://github.com/astro-datalab/dlairflow/actions/workflows/CI.yml/badge.svg)](https://github.com/astro-datalab/dlairflow/actions/workflows/CI.yml) [![RTD](https://readthedocs.org/projects/dlairflow/badge/?version=latest)](https://dlairflow.readthedocs.io/en/latest/)
+[![CI](https://github.com/astro-datalab/dlairflow/actions/workflows/CI.yml/badge.svg)](https://github.com/astro-datalab/dlairflow/actions/workflows/CI.yml) [![Coverage Status](https://coveralls.io/repos/github/astro-datalab/dlairflow/badge.svg?branch=main)](https://coveralls.io/github/astro-datalab/dlairflow?branch=main) [![RTD](https://readthedocs.org/projects/dlairflow/badge/?version=latest)](https://dlairflow.readthedocs.io/en/latest/)
 
 Reusable code components for building Apache Airflow DAGs.
 
