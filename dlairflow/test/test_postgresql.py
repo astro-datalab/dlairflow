@@ -33,10 +33,12 @@ def temporary_airflow_home(tmp_path_factory):
     del os.environ['AIRFLOW_HOME']
 
 
-@pytest.mark.parametrize('task_function,dump_dir', [('pg_dump_schema', None), ('pg_dump_schema', 'dump_dir'),
-                                                    ('pg_restore_schema', None), ('pg_restore_schema', 'dump_dir')])
-def test_pg_dump_and_restore(monkeypatch, temporary_airflow_home, task_function, dump_dir):
-    """Test pg_dump tasks in various combinations.
+@pytest.mark.parametrize('task_function,dump_dir', [('pg_dump_schema', None),
+                                                    ('pg_dump_schema', 'dump_dir'),
+                                                    ('pg_restore_schema', None),
+                                                    ('pg_restore_schema', 'dump_dir')])
+def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump_dir):
+    """Test pg_dump task with alternate directory.
     """
     def mock_connection(connection):
         conn = MockConnection(connection)
