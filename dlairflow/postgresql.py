@@ -56,7 +56,8 @@ def pg_dump_schema(connection, schema, dump_dir=None):
     pg_env = _connection_to_environment(connection)
     return BashOperator(task_id="pg_dump_schema",
                         bash_command=("[[ -f {{ params.dump_dir }}/{{ params.schema }}.dump ]] || " +
-                                      "pg_dump --schema={{ params.schema }} --format=c --file={{ params.dump_dir }}/{{ params.schema }}.dump"),
+                                      "pg_dump --schema={{ params.schema }} --format=c " +
+                                      "--file={{ params.dump_dir }}/{{ params.schema }}.dump"),
                         params={'schema': schema,
                                 'dump_dir': dump_dir},
                         env=pg_env,
