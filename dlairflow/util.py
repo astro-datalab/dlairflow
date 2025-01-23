@@ -30,6 +30,11 @@ def ensure_sql():
     -------
     :class:`str`
         The full path to the directory.
+
+    Raises
+    ------
+    KeyError
+        If :envvar:`AIRFLOW_HOME` is not defined.
     """
     sql_dir = os.path.join(os.environ['AIRFLOW_HOME'], 'dags', 'sql')
     os.makedirs(sql_dir, exist_ok=True)

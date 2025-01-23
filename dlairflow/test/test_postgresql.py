@@ -18,7 +18,7 @@ class MockConnection(object):
         return
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def temporary_airflow_home(tmp_path_factory):
     """Avoid creating ``${HOME}/airflow`` during tests.
     """
