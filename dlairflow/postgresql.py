@@ -6,9 +6,11 @@ dlairflow.postgresql
 
 Standard tasks for working with PostgreSQL that can be imported into a DAG.
 """
+import os
 from airflow.operators.bash import BashOperator
 from airflow.hooks.base import BaseHook
-from .util import user_scratch
+from airflow.providers.postgres.operators.postgres import PostgresOperator
+from .util import user_scratch, ensure_sql
 
 
 def _connection_to_environment(connection):
@@ -92,3 +94,42 @@ def pg_restore_schema(connection, schema, dump_dir=None):
                                 'dump_dir': dump_dir},
                         env=pg_env,
                         append_env=True)
+
+
+def q3c_index(connection, schema, table, ra='ra', dec='dec'):
+    """Create a q3c index on `schema`.`table`.
+
+    Parameters
+    ----------
+    connection : :class:`str`
+        An Airflow database connection string.
+    schema : :class:`str`
+        The name of the database schema.
+    table : :class:`str`
+        The name of the table in `schema`.
+    ra : :class:`str`, optional
+        Name of the column containing Right Ascension, default 'ra'.
+    dec : :class:`str`, optional
+        Name of the column containing Declination, default 'dec'.
+
+    Returns
+    -------
+    :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+        A task to create a q3c index
+    """
+    sql_dir = ensure_sql()
+    sql_file = os.path.join(sql_dir, "dlairflow.postgresql.q3c_index.sql")
+    if not os.path.exists(sql_file):
+        sql_data = """--
+-- Created by dlairflow.postgresql.q3c_index().
+--
+CREATE INDEX {{ params.table }}_q3c_ang2ipix ON {{ params['schema'] }}.{{ params['table'] }} (q3c_ang2ipix("{{ params['ra'] }}", "{{ params['dec'] }}")) WITH (fillfactor=100);
+CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params['schema'] }}.{{ params['table'] }};
+"""
+        with open(sql_file, 'w') as s:
+            s.write(sql_data)
+    op = PostgresOperator(task_id="q3c_index",
+                          postgres_conn_id=connection,
+                          sql="sql/dlairflow.postgresql.q3c_index.sql",
+                          params={'schema': schema, 'table': table, 'ra': ra, 'dec': dec})
+    return op

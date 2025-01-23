@@ -26,4 +26,3 @@ def test_ensure_sql_no_home():
     """
     with pytest.raises(KeyError):
         foo = ensure_sql()
-
