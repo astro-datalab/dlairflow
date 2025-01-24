@@ -94,7 +94,9 @@ def test_q3c_index(monkeypatch, temporary_airflow_home):
     expected_render = """--
 -- Created by dlairflow.postgresql.q3c_index().
 --
-CREATE INDEX q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table (q3c_ang2ipix("ra", "dec")) WITH (fillfactor=100);
+CREATE INDEX q3c_table_q3c_ang2ipix
+    ON q3c_schema.q3c_table (q3c_ang2ipix("ra", "dec"))
+    WITH (fillfactor=100);
 CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
 """
     assert tmpl.render(params=test_operator.params) == expected_render
