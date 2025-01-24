@@ -96,7 +96,7 @@ def pg_restore_schema(connection, schema, dump_dir=None):
                         append_env=True)
 
 
-def q3c_index(connection, schema, table, ra='ra', dec='dec'):
+def q3c_index(connection, schema, table, ra='ra', dec='dec', overwrite=False):
     """Create a q3c index on `schema`.`table`.
 
     Parameters
@@ -111,6 +111,8 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec'):
         Name of the column containing Right Ascension, default 'ra'.
     dec : :class:`str`, optional
         Name of the column containing Declination, default 'dec'.
+    overwrite : :class:`bool`, optional
+        If ``True`` replace any existing SQL template file.
 
     Returns
     -------
@@ -119,7 +121,7 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec'):
     """
     sql_dir = ensure_sql()
     sql_file = os.path.join(sql_dir, "dlairflow.postgresql.q3c_index.sql")
-    if not os.path.exists(sql_file):
+    if overwrite or not os.path.exists(sql_file):
         sql_data = """--
 -- Created by dlairflow.postgresql.q3c_index().
 --

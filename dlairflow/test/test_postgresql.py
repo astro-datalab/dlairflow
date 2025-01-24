@@ -70,8 +70,8 @@ def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump
     else:
         assert test_operator.params['dump_dir'] == 'dump_dir'
 
-
-def test_q3c_index(monkeypatch, temporary_airflow_home):
+@pytest.mark.parametrize('overwrite', [(False, ), (True, )])
+def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite):
     """Test the q3c_index function.
     """
     #
@@ -85,7 +85,8 @@ def test_q3c_index(monkeypatch, temporary_airflow_home):
     p = import_module('..postgresql', package='dlairflow.test')
 
     tf = p.__dict__['q3c_index']
-    test_operator = tf("login,password,host,schema", 'q3c_schema', 'q3c_table')
+    test_operator = tf("login,password,host,schema", 'q3c_schema', 'q3c_table',
+                       overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' / 'dlairflow.postgresql.q3c_index.sql'))
     assert test_operator.task_id == 'q3c_index'
