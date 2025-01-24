@@ -123,8 +123,10 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec'):
         sql_data = """--
 -- Created by dlairflow.postgresql.q3c_index().
 --
-CREATE INDEX {{ params.table }}_q3c_ang2ipix ON {{ params['schema'] }}.{{ params['table'] }} (q3c_ang2ipix("{{ params['ra'] }}", "{{ params['dec'] }}")) WITH (fillfactor=100);
-CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params['schema'] }}.{{ params['table'] }};
+CREATE INDEX {{ params.table }}_q3c_ang2ipix
+    ON {{ params.schema }}.{{ params.table }} (q3c_ang2ipix("{{ params.ra }}", "{{ params.dec }}"))
+    WITH (fillfactor=100);
+CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }};
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
