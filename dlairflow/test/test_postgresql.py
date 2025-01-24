@@ -9,7 +9,8 @@ from jinja2 import Environment, FileSystemLoader
 
 
 class MockConnection(object):
-
+    """Convert a string into an object with attributes.
+    """
     def __init__(self, connection):
         foo = connection.split(',')
         self.login = foo[0]
@@ -17,6 +18,13 @@ class MockConnection(object):
         self.host = foo[2]
         self.schema = foo[3]
         return
+
+
+def mock_connection(connection):
+    """Used to monkeypatch get_connection() methods.
+    """
+    conn = MockConnection(connection)
+    return conn
 
 
 @pytest.fixture(scope="function")
@@ -39,12 +47,8 @@ def temporary_airflow_home(tmp_path_factory):
                                                     ('pg_restore_schema', None),
                                                     ('pg_restore_schema', 'dump_dir')])
 def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump_dir):
-    """Test pg_dump tasks in various combinations.
+    """Test pg_dump and pg_restore tasks in various combinations.
     """
-    def mock_connection(connection):
-        conn = MockConnection(connection)
-        return conn
-
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
@@ -70,9 +74,6 @@ def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump
 def test_q3c_index(monkeypatch, temporary_airflow_home):
     """Test the q3c_index function.
     """
-    def mock_connection(connection):
-        conn = MockConnection(connection)
-        return conn
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
@@ -85,6 +86,7 @@ def test_q3c_index(monkeypatch, temporary_airflow_home):
 
     tf = p.__dict__['q3c_index']
     test_operator = tf("login,password,host,schema", 'q3c_schema', 'q3c_table')
+    assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' / 'dlairflow.postgresql.q3c_index.sql'))
     assert test_operator.task_id == 'q3c_index'
     assert test_operator.sql == 'sql/dlairflow.postgresql.q3c_index.sql'
