@@ -162,3 +162,46 @@ CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
 
 """
     assert tmpl.render(params=test_operator.params) == expected_render
+
+
+@pytest.mark.parametrize('overwrite', [(False, ), (True, )])
+def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
+    """Test the primary_key function.
+    """
+    #
+    # Import inside the function to avoid creating $HOME/airflow.
+    #
+    from airflow.hooks.base import BaseHook
+    from airflow.providers.postgres.operators.postgres import PostgresOperator
+
+    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
+
+    p = import_module('..postgresql', package='dlairflow.test')
+
+    tf = p.__dict__['primary_key']
+    test_operator = tf("login,password,host,schema", 'test_schema',
+                       {"table1": "column1",
+                        "table2": ("column1", "column2"),
+                        "table3": 12345},
+                       overwrite=overwrite)
+    assert isinstance(test_operator, PostgresOperator)
+    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
+                              'dlairflow.postgresql.primary_key.sql'))
+    assert test_operator.task_id == 'primary_key'
+    assert test_operator.sql == 'sql/dlairflow.postgresql.primary_key.sql'
+    env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
+                      keep_trailing_newline=True)
+    tmpl = env.get_template(test_operator.sql)
+    expected_render = """--
+-- Created by dlairflow.postgresql.primary_key().
+-- Call primary_key(..., overwrite=True) to replace this file.
+--
+
+ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1");
+
+ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2");
+
+-- Unknown type: 12345.
+
+"""
+    assert tmpl.render(params=test_operator.params) == expected_render

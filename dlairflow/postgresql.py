@@ -206,3 +206,60 @@ CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
                             postgres_conn_id=connection,
                             sql=f"sql/{sql_basename}",
                             params={'schema': schema, 'table': table, 'columns': columns})
+
+
+def primary_key(connection, schema, primary_keys, overwrite=False):
+    """Create a primary key on one or more tables in `schema`.
+
+    Parameters
+    ----------
+    connection : :class:`str`
+        An Airflow database connection string.
+    schema : :class:`str`
+        The name of the database schema.
+    primary_keys : :class:`dict`
+        A dictionary containing the of the table in `schema` mapped to the
+        primary key column(s). See below for details.
+    overwrite : :class:`bool`, optional
+        If ``True`` replace any existing SQL template file.
+
+    Returns
+    -------
+    :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+        A task to create a q3c index
+
+    Notes
+    -----
+    `primary_keys` may be a :class:`dict` containing multiple types:
+
+    * The key is the table name within `schema`.
+    * The value can be:
+
+      - :class:`str`: create a primary key on one column.
+      - :class:`tuple`: create a primary key on the set of columns in the tuple.
+      - Any other type will be ignored.
+    """
+    sql_dir = ensure_sql()
+    sql_basename = "dlairflow.postgresql.primary_key.sql"
+    sql_file = os.path.join(sql_dir, sql_basename)
+    if overwrite or not os.path.exists(sql_file):
+        sql_data = """--
+-- Created by dlairflow.postgresql.primary_key().
+-- Call primary_key(..., overwrite=True) to replace this file.
+--
+{% for table, columns in params.primary_keys.items() %}
+{% if columns is string -%}
+ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns }}");
+{% elif columns is sequence -%}
+ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('", "') }}");
+{% else -%}
+-- Unknown type: {{ columns }}.
+{% endif -%}
+{% endfor %}
+"""
+        with open(sql_file, 'w') as s:
+            s.write(sql_data)
+    return PostgresOperator(task_id="primary_key",
+                            postgres_conn_id=connection,
+                            sql=f"sql/{sql_basename}",
+                            params={'schema': schema, 'primary_keys': primary_keys})
