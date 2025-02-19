@@ -2,10 +2,12 @@
 dlairflow Change Log
 ====================
 
-0.1.2 (unreleased)
+0.1.2 (2025-02-19)
 ------------------
 
-* No changes yet.
+* Add support for some standard SQL tasks (PR `#2`_).
+
+.. _`#2`: https://github.com/astro-datalab/dlairflow/pull/2
 
 0.1.1 (2025-01-09)
 ------------------
