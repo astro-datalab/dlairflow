@@ -1,2 +1,2 @@
 prune .github
-global-exclude .gitignore .readthedocs.yml
+global-exclude .gitignore .readthedocs.yaml
