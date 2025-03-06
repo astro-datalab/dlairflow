@@ -47,12 +47,17 @@ See the README_ file for compile instructions. Once compiled, ensure that
 PostgreSQL
 ~~~~~~~~~~
 
-Client (psql)
-+++++++++++++
+Clients
++++++++
 
 :command:`fits2db` is often used in conjunction with :command:`psql`, the
 PostgreSQL_ command-line client. :command:`psql` must be installed on the system
-and present in :envvar:`PATH`.
+and present in :envvar:`PATH`. There are PostgreSQL client packages available
+for most standard Linux and macOS systems.
+
+In addition to :command:`psql`, ``dlairflow`` requires :command:`pg_dump`
+and :command:`pg_restore`.  These are usually all included together in the
+same client package.
 
 Airflow support
 +++++++++++++++
@@ -62,3 +67,10 @@ If you install ``dlairflow`` with :command:`pip`, it should install
 apache-airflow-providers-postgres_ automatically
 
 .. _apache-airflow-providers-postgres: https://pypi.org/project/apache-airflow-providers-postgres/
+
+
+Scratch space
+~~~~~~~~~~~~~
+
+Some ``dlairflow`` functions and returned task will need to create intermediate
+files. We refer to this as "scratch" space.

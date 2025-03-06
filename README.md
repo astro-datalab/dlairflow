@@ -4,6 +4,11 @@
 
 Reusable code components for building [Apache Airflow®](https://airflow.apache.org) DAGs.
 
+## Requirements
+
+`dlairflow` requires several non-Python command-line programs.
+See [the Requirements](https://dlairflow.readthedocs.io/en/latest/#requirements) for more details.
+
 ## Documentation
 
 Please visit [dlairflow on Read the Docs](https://dlairflow.readthedocs.io/en/latest/).
