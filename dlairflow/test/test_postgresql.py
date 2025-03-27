@@ -42,9 +42,7 @@ def temporary_airflow_home(tmp_path_factory):
     del os.environ['AIRFLOW_HOME']
 
 
-@pytest.mark.parametrize('task_function,dump_dir', [('pg_dump_schema', None),
-                                                    ('pg_dump_schema', 'dump_dir'),
-                                                    ('pg_restore_schema', None),
+@pytest.mark.parametrize('task_function,dump_dir', [('pg_dump_schema', 'dump_dir'),
                                                     ('pg_restore_schema', 'dump_dir')])
 def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump_dir):
     """Test pg_dump and pg_restore tasks in various combinations.

@@ -10,17 +10,28 @@ for internal use by the package itself.
 import os
 
 
-def user_scratch():
+def user_scratch(owner):
     """A standard, per-user scratch directory.
 
     This function simply returns a path. It does not guarantee the directory exists.
+    The environment variable :envvar:`DLAIRFLOW_SCRATCH_ROOT` must be set.
+
+    Parameters
+    ----------
+    owner : :class:`str`
+        The owner of a DAG. This can be obtained from, *e.g.* ``dag.owner``.
 
     Returns
     -------
     :class:`str`
         The name of the directory.
+
+    Raises
+    ------
+    KeyError
+        If :envvar:`DLAIRFLOW_SCRATCH_ROOT` is not set.
     """
-    return os.path.join('/data0', 'datalab', os.environ['USER'])
+    return os.path.join(os.environ['DLAIRFLOW_SCRATCH_ROOT'], owner)
 
 
 def ensure_sql():

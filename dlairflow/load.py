@@ -11,7 +11,7 @@ from .postgresql import _connection_to_environment
 from .util import user_scratch
 
 
-def load_table_with_fits2db(connection, schema, table, load_dir=None):
+def load_table_with_fits2db(connection, schema, table, load_dir):
     """Create a task to load a database table with :command:`fits2db`.
 
     This function assumes that a FITS file is defined by::
@@ -30,7 +30,7 @@ def load_table_with_fits2db(connection, schema, table, load_dir=None):
         The schema in which `table` is defined.
     table : :class:`str`
         The name of the table.
-    load_dir : :class:`str`, optional
+    load_dir : :class:`str`
         FITS file to load is in this directory.
 
     Returns
@@ -38,8 +38,6 @@ def load_table_with_fits2db(connection, schema, table, load_dir=None):
     :class:`~airflow.operators.bash.BashOperator`
         A BashOperator that will execute :command:`fits2db`.
     """
-    if load_dir is None:
-        load_dir = user_scratch()
     load_table_template = ("fits2db -t {{ params.schema }}.{{ params.table }} " +
                            "{{ params.load_dir }}/{{ params.schema }}.{{ params.table }}.fits " +
                            "| psql")

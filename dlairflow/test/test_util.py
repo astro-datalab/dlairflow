@@ -8,11 +8,18 @@ from ..util import user_scratch, ensure_sql
 from .test_postgresql import temporary_airflow_home
 
 
-def test_user_scratch():
+def test_user_scratch(monkeypatch):
     """Test scratch dir.
     """
-    assert user_scratch() == os.path.join('/data0', 'datalab', os.environ['USER'])
+    monkeypatch.setenv('DLAIRFLOW_SCRATCH_ROOT', '/data0/datalab')
+    assert user_scratch('owner') == os.path.join('/data0', 'datalab', 'owner')
 
+
+def test_user_scratch_exception():
+    """Test scratch dir when environment variable is missing.
+    """
+    with pytest.raises(KeyError):
+        foo = user_scratch('owner')
 
 def test_ensure_sql(temporary_airflow_home):
     """Test SQL directory creation.

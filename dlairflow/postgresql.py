@@ -35,7 +35,7 @@ def _connection_to_environment(connection):
     return env
 
 
-def pg_dump_schema(connection, schema, dump_dir=None):
+def pg_dump_schema(connection, schema, dump_dir):
     """Dump an entire database schema using :command:`pg_dump`.
 
     Parameters
@@ -44,17 +44,14 @@ def pg_dump_schema(connection, schema, dump_dir=None):
         An Airflow database connection string.
     schema : :class:`str`
         The name of the database schema.
-    dump_dir : :class:`str`, optional
-        Place the dump file in this directory. If not specified, a standard
-        scratch directory will be chosen.
+    dump_dir : :class:`str`
+        Place the dump file in this directory.
 
     Returns
     -------
     :class:`~airflow.operators.bash.BashOperator`
         A BashOperator that will execute :command:`pg_dump`.
     """
-    if dump_dir is None:
-        dump_dir = user_scratch()
     pg_env = _connection_to_environment(connection)
     return BashOperator(task_id="pg_dump_schema",
                         bash_command=("[[ -f {{ params.dump_dir }}/{{ params.schema }}.dump ]] || " +
@@ -66,7 +63,7 @@ def pg_dump_schema(connection, schema, dump_dir=None):
                         append_env=True)
 
 
-def pg_restore_schema(connection, schema, dump_dir=None):
+def pg_restore_schema(connection, schema, dump_dir):
     """Restore a database schema using :command:`pg_restore`.
 
     Parameters
@@ -75,17 +72,14 @@ def pg_restore_schema(connection, schema, dump_dir=None):
         An Airflow database connection string.
     schema : :class:`str`
         The name of the database schema.
-    dump_dir : :class:`str`, optional
-        Find the dump file in this directory. If not specified, a standard
-        scratch directory will be chosen.
+    dump_dir : :class:`str`
+        Find the dump file in this directory.
 
     Returns
     -------
     :class:`~airflow.operators.bash.BashOperator`
         A BashOperator that will execute :command:`pg_restore`.
     """
-    if dump_dir is None:
-        dump_dir = user_scratch()
     pg_env = _connection_to_environment(connection)
     return BashOperator(task_id="pg_restore_schema",
                         bash_command=("[[ -f {{ params.dump_dir }}/{{ params.schema }}.dump ]] && " +
