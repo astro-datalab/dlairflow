@@ -21,6 +21,7 @@ def test_user_scratch_exception():
     with pytest.raises(KeyError):
         foo = user_scratch('owner')
 
+
 def test_ensure_sql(temporary_airflow_home):
     """Test SQL directory creation.
     """
