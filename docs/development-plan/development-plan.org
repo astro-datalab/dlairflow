@@ -1,0 +1,342 @@
+#+COMMENT:-*- org-latex-toc-command: "\\tableofcontents \\clearpage" -*-
+# -*- org-todo-keyword-faces: (("TODO" . "red") ("STARTED" . "blue") ("WAITING" . "orange") ("DONE" . "Goldenrod")); -*-
+# -*- org-export-allow-bind-keywords: t
+#+INCLUDE: ./org-macros.setup
+#+AUTHOR: Robert Nikutta, Benjamin Weaver
+#+EMAIL: robert.nikutta@noirlab.edu, benjamin.weaver@noirlab.edu
+#+DATE: Last modified: {{{modification-time(%Y-%m-%d)}}}
+#+TITLE: Development tasks for `dlairflow` package
+#
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="style.css" />
+#+OPTIONS: latex-images-centered:t latex-tables-centered:t
+#
+#+STARTUP: content
+#+COLUMNS: %64ITEM %TODO(STATUS) %PRIORITY %DEFINITION %TAGS
+#+PROPERTY: Definition_ALL tbw draft prod
+#
+#+LATEX_CLASS_OPTIONS: [10pt]
+#+LATEX_HEADER: \usepackage[margin=0.8in]{geometry}
+#+LATEX_HEADER: \renewcommand{\familydefault}{\sfdefault}
+#+OPTIONS: p:nil author:t toc:t num:t todo:t pri:t stat:t preserve-breaks:t ^:nil
+#+OPTIONS: date:t
+#+OPTIONS: html-scripts:nil html-postamble:nil html-style:nil
+#+COLUMNS: %64ITEM %TODO(STATUS) %PRIORITY %IMPLEMENTATION %TAGS
+#+PROPERTY: Implementation_ALL draft prod
+#+LATEX: \setlength\parindent{0pt}
+#+latex_header: \hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+-----
+
+* Assumptions                                                          :NOSHOW:
+  :PROPERTIES:  
+  :UNNUMBERED: nil
+  :END:
+
+Development of the ~dlairflow~ package makes the following global assumptions:
+
+- The package is generic, such that it can be used on any system (with the appropriate configuration file).
+- The actual staging and production database engines and machines are not hard-coded, but rather configurable.
+- All sub-modules and methods are written in a generic sense. Example: ~ingest_csv_file(*args)~ is good, ~ingest_sdss_dr12_csv_file(*args)~ is not.
+- For each dataset's metadata there is only a single source of truth (ideally a Felis .yaml file). All operations can rely on the Felis file being correct, complete, and can validate actual data against the Felis truth file.
+- This implies that all metadata information necessary to, e.g., create schemas, tables, columns, indices, run quality assurance tasks, etc., can be looked or derived from the Felis .yaml file.
+- Each task name described in this document is a template / suggestion at first, and should be marked with a DEFINITION property. The possible values are: tbw (nothing defined beyond the need for this functionality), draft (definition is work in progress), production (defined, implemented, deployed).
+- The mandatory and optional arguments for every methods are not yet defined in most cases.
+
+* Functionality
+
+** Metadata handling and initial quality assurance                     :show:
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :END:
+
+*** TODO ~meta.validate_schema_file()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Validate Felis yaml file (is the file syntactically correct?)./
+- The tests (done by Felis calls) likely include: self-consistency, column datatypes and UCDs have allowed values, etc.
+- The command to use is likely: ~felis validate [options] schema.yaml~
+
+See https://felis.lsst.io/user-guide/validation.html
+
+*** TODO ~meta.get()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Extract schema/tables/column metadata from Felis yaml file./
+- Should be flexible to extract and return any of these:
+  - tables --> list
+  - columns --> list
+  - column --> dict of column name|dtype|ucd|description.
+
+
+*** TODO ~meta.validate_data_files()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Validate initial data against its Felis yaml file (are the data and the yaml file compatible?./
+
+*** TODO ~meta.validate_db_schema()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Validate DB contents against its Felis yaml file./
+
+Ensure that all of the following are true:
+- All tables and columns as defined in the yaml file for a given schema are present in the DB under that schema.
+- No additional tables and column are present in the DB which aren't part of the yaml schema file.
+- All column datatypes in the DB correspond to the datatypes defined in the yaml file.
+- All columns in the TapSchema in the DB have a column description, and that it is identical to the column descriptions in the yaml file.
+- Ensure that for every column in the DB that has UCD defined, the USD corresponds to tyhe one defined for said column in the yaml file. 
+
+*** TODO ~meta.get_counts()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Count and return number of tables, columns per table, rows per table./
+- This method could do it based on files, and based on a DB schema.
+
+
+** Data file transformations                                           :show:
+*** TODO ~file.add_data_column()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Add arbitrary  data column./
+- For FITS bintable files: use STILTS.
+
+*** TODO ~file_add_coords()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Add a pair of coordinate columns to the FITS bintable files, using STILTS.\
+- Usually, we add glon/glat, and elon/elat.
+
+*** TODO ~file.add_spatial_pixels()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Compute and add columns for spatial indexing./
+- This is atypical addition, and usually adds ~nest4096~, ~ring256~, and ~htm9~ columns.
+
+
+** DB operations                                                       :show:
+
+*** TODO ~db.create_schema()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Create schemas, tables, columns (from Felis yaml file)./
+- If Felis, command is: ~felis create schema.yaml~ (or use API).
+- See https://felis.lsst.io/user-guide/databases.html
+
+*** TODO ~db.load_tap_schema()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Create/load TapSchema./
+- Use ~felis load-tap-schema~ (or API).
+- See https://felis.lsst.io/user-guide/tap.html
+
+*** TODO ~db.load_table_from_files()~
+    :PROPERTIES:
+    :DEFINITION: tbw
+    :END:
+
+/Load data from file(s) to DB table./
+- The file can be either a path to a single file, or to a directory of files.
+- The file format can be either:
+  - .fits|.fits.gz|.fz (highest implementation prioriry)
+  - .csv|.ecsv
+  - .parquet
+- Loading with fits2db should allow to pass various fits2db flags, including
+  - ~--rid=random_id~  (creates a column with uniformly distrobuted random double-precision floats between 0.0 and 100.)
+  - ~-b~ (binary mode; preserves precision, MUCH faster loading; but we need to investigate behaviour when string-valued columns are present)
+
+*** TODO ~db.add_column()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Define a new colum in a DB table./
+- Issued command syntax is: ~ALTER TABLE ${table} ADD ${column} ${datatype}~
+
+*** TODO ~db.insert_into_column()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Create a new column in the DB table, and insert new records into it./
+- Issued command syntax is:
+
+  ~ALTER TABLE ${table} ADD ${column} ${datatype}~
+
+  ~INSERT INTO ${table} (${column}) VALUES ${values}~
+
+- First step can use ~db.add_column()~.
+- Investigate also whether ~COPY~ is the better/faster method to add a new column to a table.
+
+*** TODO ~db.drop_column()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Drop colum from DB table./
+- Issued command syntax is: ~ALTER TABLE ${table} DROP COLUMN ${column}~
+
+*** TODO ~db.create_index()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Create column index./
+- Assumes this is a B-tree index (default in Postgres) for a single column.
+- Can take ~unique=True~ arg, and then executes ~CREATE UNIQUE INDEX [...]~
+- Can take q3c=True and ra=racol, dec=deccol, and then executes
+  
+  ~CREATE INDEX ${table}_q3c_idx ON ${schema}.${table}(q3c_ang2ipix(${racol},${deccol})) TABLESPACE ${tablespace}~
+
+*** TODO ~db.cluster_table()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Cluster a table./
+
+*** TODO ~db.vaccum_analyze()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Vacuum analyze a table./
+
+*** TODO ~db.grant_permission()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Grant permission./
+
+*** TODO ~db.alter_table()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Alter a table./
+
+*** TODO ~db.run_sql()~
+   :PROPERTIES:
+   :IMPLEMENTATION: draft
+   :DEFINITION: tbw
+   :END:
+
+/Run arbitrary SQL./
+- Other SQL-executing functions (e.g. ~db.alter_table()~, ~db.create_index()~ could be calling this generic SQL execution function, but with the correct/validated/sanitized arguments. 
+
+
+** Post-ingest quality assurance                                       :show:
+
+*** TODO task 1
+    :PROPERTIES:
+    :DEFINITION: tbw
+    :END:
+
+*** TODO task 2
+    :PROPERTIES:
+    :DEFINITION: tbw
+    :END:
+
+
+** DB connectivity                                                     :show:
+
+*** TODO task 1
+    :PROPERTIES:
+    :DEFINITION: tbw
+    :END:
+
+*** TODO task 2
+    :PROPERTIES:
+    :DEFINITION: tbw
+    :END:
+
+
+** Unit testing                                                        :show:
+
+*** DONE Set up CI for unit testing
+    :PROPERTIES:
+    :DEFINITION: tbw
+    :END:
+
+*** TODO Tests that can run locally
+    :PROPERTIES:
+    :DEFINITION: tbw
+    :END:
+
+#+latex: \clearpage
+
+
+* Task overview table
+
+#+BEGIN: columnview :hlines 1 :id global :indent t :match "show"
+| ITEM                                                | STATUS | PRIORITY | DEFINITION | TAGS   |
+|-----------------------------------------------------+--------+----------+------------+--------|
+| \_  Metadata handling and initial quality assurance |        | B        |            | :show: |
+| \_    ~meta.validate_schema_file()~                 | TODO   | B        | tbw        |        |
+| \_    ~meta.get()~                                  | TODO   | B        | tbw        |        |
+| \_    ~meta.validate_data_files()~                  | TODO   | B        | tbw        |        |
+| \_    ~meta.validate_db_schema()~                   | TODO   | B        | tbw        |        |
+| \_    ~meta.get_counts()~                           | TODO   | B        | tbw        |        |
+| \_  Data file transformations                       |        | B        |            | :show: |
+| \_    ~file.add_data_column()~                      | TODO   | B        | tbw        |        |
+| \_    ~file_add_coords()~                           | TODO   | B        | tbw        |        |
+| \_    ~file.add_spatial_pixels()~                   | TODO   | B        | tbw        |        |
+| \_  DB operations                                   |        | B        |            | :show: |
+| \_    ~db.create_schema()~                          | TODO   | B        | tbw        |        |
+| \_    ~db.load_tap_schema()~                        | TODO   | B        | tbw        |        |
+| \_    ~db.load_table_from_files()~                  | TODO   | B        | tbw        |        |
+| \_    ~db.add_column()~                             | TODO   | B        | tbw        |        |
+| \_    ~db.insert_into_column()~                     | TODO   | B        | tbw        |        |
+| \_    ~db.drop_column()~                            | TODO   | B        | tbw        |        |
+| \_    ~db.create_index()~                           | TODO   | B        | tbw        |        |
+| \_    ~db.cluster_table()~                          | TODO   | B        | tbw        |        |
+| \_    ~db.vaccum_analyze()~                         | TODO   | B        | tbw        |        |
+| \_    ~db.grant_permission()~                       | TODO   | B        | tbw        |        |
+| \_    ~db.alter_table()~                            | TODO   | B        | tbw        |        |
+| \_    ~db.run_sql()~                                | TODO   | B        | tbw        |        |
+| \_  Post-ingest quality assurance                   |        | B        |            | :show: |
+| \_    task 1                                        | TODO   | B        | tbw        |        |
+| \_    task 2                                        | TODO   | B        | tbw        |        |
+| \_  DB connectivity                                 |        | B        |            | :show: |
+| \_    task 1                                        | TODO   | B        | tbw        |        |
+| \_    task 2                                        | TODO   | B        | tbw        |        |
+| \_  Unit testing                                    |        | B        |            | :show: |
+| \_    Set up CI for unit testing                    | DONE   | B        | tbw        |        |
+| \_    Tests that can run locally                    | TODO   | B        | tbw        |        |
+#+END:
