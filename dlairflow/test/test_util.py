@@ -27,7 +27,7 @@ def test_user_scratch_empty_exception(monkeypatch):
     """Test scratch dir when environment variable set but empty.
     """
     monkeypatch.setenv('DLAIRFLOW_SCRATCH_ROOT', '')
-    with pytest.raises(KeyError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         foo = user_scratch('owner')
     assert excinfo.value.args[0] == 'DLAIRFLOW_SCRATCH_ROOT is set but empty!'
 

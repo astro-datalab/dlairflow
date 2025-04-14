@@ -10,7 +10,7 @@ for internal use by the package itself.
 import os
 
 
-def user_scratch(owner):
+def user_scratch(user_key):
     """A standard, per-user scratch directory.
 
     This function simply returns a path. It does not guarantee the directory exists.
@@ -18,8 +18,9 @@ def user_scratch(owner):
 
     Parameters
     ----------
-    owner : :class:`str`
-        The owner of a DAG. This can be obtained from, *e.g.* ``dag.owner``.
+    user_key : :class:`str`
+        The key associated with the a user's scratch space. This can be any
+        arbitrary string such as a single DAG owner, *e.g.* ``dag.owner``.
 
     Returns
     -------
@@ -30,11 +31,13 @@ def user_scratch(owner):
     ------
     KeyError
         If :envvar:`DLAIRFLOW_SCRATCH_ROOT` is not set.
+    ValueError
+        If :envvar:`DLAIRFLOW_SCRATCH_ROOT` is set but *empty*.
     """
     root = os.environ['DLAIRFLOW_SCRATCH_ROOT']
     if not root:
-        raise KeyError("DLAIRFLOW_SCRATCH_ROOT is set but empty!")
-    return os.path.join(root, owner)
+        raise ValueError("DLAIRFLOW_SCRATCH_ROOT is set but empty!")
+    return os.path.join(root, user_key)
 
 
 def ensure_sql():
