@@ -31,7 +31,10 @@ def user_scratch(owner):
     KeyError
         If :envvar:`DLAIRFLOW_SCRATCH_ROOT` is not set.
     """
-    return os.path.join(os.environ['DLAIRFLOW_SCRATCH_ROOT'], owner)
+    root = os.environ['DLAIRFLOW_SCRATCH_ROOT']
+    if not root:
+        raise KeyError("DLAIRFLOW_SCRATCH_ROOT is set but empty!")
+    return os.path.join(root, owner)
 
 
 def ensure_sql():
