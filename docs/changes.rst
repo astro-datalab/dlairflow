@@ -2,10 +2,12 @@
 dlairflow Change Log
 ====================
 
-0.1.3 (unreleased)
+0.1.3 (2025-04-17)
 ------------------
 
-* No changes yet.
+* More portable user scratch directories; address documentation issues (PR `#7`_).
+
+.. _`#7`: https://github.com/astro-datalab/dlairflow/pull/7
 
 0.1.2 (2025-02-19)
 ------------------
