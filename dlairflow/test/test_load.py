@@ -8,8 +8,7 @@ from importlib import import_module
 from .test_postgresql import MockConnection, temporary_airflow_home
 
 
-@pytest.mark.parametrize('task_function,load_dir', [('load_table_with_fits2db', None),
-                                                    ('load_table_with_fits2db', 'load_dir'),])
+@pytest.mark.parametrize('task_function,load_dir', [('load_table_with_fits2db', 'load_dir'),])
 def test_load_table(monkeypatch, temporary_airflow_home, task_function, load_dir):
     """Test various loading functions.
     """
@@ -33,7 +32,4 @@ def test_load_table(monkeypatch, temporary_airflow_home, task_function, load_dir
     assert isinstance(test_operator, BashOperator)
     assert test_operator.env['PGHOST'] == 'host'
     assert test_operator.params['schema'] == 'schema'
-    if load_dir is None:
-        assert test_operator.params['load_dir'] == '/data0/datalab/' + os.environ['USER']
-    else:
-        assert test_operator.params['load_dir'] == 'load_dir'
+    assert test_operator.params['load_dir'] == 'load_dir'

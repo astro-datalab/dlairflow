@@ -4,7 +4,9 @@
 dlairflow
 =========
 
-Reusable code components for building Apache Airflow DAGs.
+Reusable code components for building `Apache Airflow®`_ DAGs.
+
+.. _`Apache Airflow®`: https://airflow.apache.org
 """
 
-__version__ = '0.1.2.dev35'
+__version__ = '0.1.4.dev58'
