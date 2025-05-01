@@ -111,7 +111,7 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec', overwrite=False):
     Returns
     -------
     :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
-        A task to create a q3c index
+        A task to create a q3c index.
     """
     sql_dir = ensure_sql()
     sql_basename = "dlairflow.postgresql.q3c_index.sql"
@@ -278,7 +278,7 @@ def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
     Returns
     -------
     :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
-        A task to create a q3c index
+        A task to run a ``VACUUM`` command.
     """
     if isinstance(table, str):
         tables = [table]

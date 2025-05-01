@@ -204,10 +204,11 @@ ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2");
 """
     assert tmpl.render(params=test_operator.params) == expected_render
 
+
 @pytest.mark.parametrize('tables,full,overwrite', [('table1', False, False),
                                                    (['table1', 'table2'], True, True)])
 def test_vacuum_analyze(monkeypatch, temporary_airflow_home, tables, full, overwrite):
-    """Test the primary_key function.
+    """Test the vacuum_analyze function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
