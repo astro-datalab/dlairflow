@@ -220,7 +220,7 @@ def primary_key(connection, schema, primary_keys, overwrite=False):
     Returns
     -------
     :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
-        A task to create a q3c index
+        A task to create a primary key.
 
     Notes
     -----
@@ -257,3 +257,50 @@ ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('"
                             postgres_conn_id=connection,
                             sql=f"sql/{sql_basename}",
                             params={'schema': schema, 'primary_keys': primary_keys})
+
+
+def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
+    """Run ``VACUUM`` and ``ANALYZE`` on one or more tables in `schema`.
+
+    Parameters
+    ----------
+    connection : :class:`str`
+        An Airflow database connection string.
+    schema : :class:`str`
+        The name of the database schema.
+    table : :class:`str` or :class:`list`
+        The tables to operate on.
+    full : :class:`bool`, optional
+        If ``True``, run ``VACUUM FULL``.
+    overwrite : :class:`bool`, optional
+        If ``True`` replace any existing SQL template file.
+
+    Returns
+    -------
+    :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+        A task to create a q3c index
+    """
+    if isinstance(table, str):
+        tables = [table]
+    else:
+        tables = table
+    sql_dir = ensure_sql()
+    sql_basename = "dlairflow.postgresql.vacuum_analyze.sql"
+    sql_file = os.path.join(sql_dir, sql_basename)
+    if overwrite or not os.path.exists(sql_file):
+        sql_data = """--
+-- Created by dlairflow.postgresql.vacuum_analyze().
+-- Call vacuum_analyze(..., overwrite=True) to replace this file.
+--
+{% for table in params.tables %}
+VACUUM {% if params.full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params.schema }}.{{ table }};
+{% endfor %}
+"""
+        with open(sql_file, 'w') as s:
+            s.write(sql_data)
+    return PostgresOperator(task_id="vacuum_analyze",
+                            postgres_conn_id=connection,
+                            sql=f"sql/{sql_basename}",
+                            params={'schema': schema,
+                                    'tables': tables,
+                                    'full': full})

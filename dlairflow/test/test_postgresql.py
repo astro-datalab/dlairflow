@@ -203,3 +203,41 @@ ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2");
 
 """
     assert tmpl.render(params=test_operator.params) == expected_render
+
+@pytest.mark.parametrize('tables,full,overwrite', [('table1', False, False),
+                                                   (['table1', 'table2'], True, True)])
+def test_vacuum_analyze(monkeypatch, temporary_airflow_home, tables, full, overwrite):
+    """Test the primary_key function.
+    """
+    #
+    # Import inside the function to avoid creating $HOME/airflow.
+    #
+    from airflow.hooks.base import BaseHook
+    from airflow.providers.postgres.operators.postgres import PostgresOperator
+
+    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
+
+    p = import_module('..postgresql', package='dlairflow.test')
+
+    tf = p.__dict__['vacuum_analyze']
+    test_operator = tf("login,password,host,schema", 'test_schema', tables,
+                       full=full, overwrite=overwrite)
+    assert isinstance(test_operator, PostgresOperator)
+    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
+                              'dlairflow.postgresql.vacuum_analyze.sql'))
+    assert test_operator.task_id == 'vacuum_analyze'
+    assert test_operator.sql == 'sql/dlairflow.postgresql.vacuum_analyze.sql'
+    env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
+                      keep_trailing_newline=True)
+    tmpl = env.get_template(test_operator.sql)
+    expected_render = """--
+-- Created by dlairflow.postgresql.vacuum_analyze().
+-- Call vacuum_analyze(..., overwrite=True) to replace this file.
+--
+
+VACUUM {0} VERBOSE ANALYZE test_schema.table1;
+
+""".format('FULL' if full else '')
+    if full:
+        expected_render += "VACUUM FULL VERBOSE ANALYZE test_schema.table2;\n\n"
+    assert tmpl.render(params=test_operator.params) == expected_render
