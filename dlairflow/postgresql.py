@@ -301,6 +301,7 @@ VACUUM {% if params.full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params.schema }}
     return PostgresOperator(task_id="vacuum_analyze",
                             postgres_conn_id=connection,
                             sql=f"sql/{sql_basename}",
+                            autocommit=True,
                             params={'schema': schema,
                                     'tables': tables,
                                     'full': full})
