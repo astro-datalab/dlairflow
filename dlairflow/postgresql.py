@@ -279,6 +279,13 @@ def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
     -------
     :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
         A task to run a ``VACUUM`` command.
+
+    Notes
+    -----
+    The returned :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+    has `autocommit=True` set, which inhibits execution of SQL commands in a
+    transaction block. Normally a transaction block is a good thing, but ``VACUUM``
+    cannot be run in a transaction block.
     """
     if isinstance(table, str):
         tables = [table]
