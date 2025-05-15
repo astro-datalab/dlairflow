@@ -15,16 +15,27 @@ jobs:
         strategy:
             fail-fast: true
             matrix:
-                os: [ubuntu-latest]
-                python-version: ['3.9', '3.10', '3.11', '3.12']
-                airflow-version: ['<2.10', '<2.11']
-                airflow-postgres-version: ['<6']
+                include:
+                    - os: ubuntu-latest
+                      python-version: '3.12'
+                      airflow-version: '<3.1'
+                      airflow-postgres-version: '<7.0'
+                    - os: ubuntu-latest
+                      python-version: '3.12'
+                      airflow-version: '<2.11'
+                      airflow-postgres-version: '<7.0'
+                    - os: ubuntu-latest
+                      python-version: '3.10'
+                      airflow-version: '<2.10'
+                      airflow-postgres-version: '<6.0'
+                    - os: ubuntu-latest
+                      python-version: '3.9'
+                      airflow-version: '<2.10'
+                      airflow-postgres-version: '<6.0'
 
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
-              with:
-                fetch-depth: 0
             - name: Set up Python ${{ matrix.python-version }}
               uses: actions/setup-python@v5
               with:
@@ -50,8 +61,6 @@ jobs:
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
-              with:
-                fetch-depth: 0
             - name: Set up Python ${{ matrix.python-version }}
               uses: actions/setup-python@v5
               with:
@@ -60,7 +69,7 @@ jobs:
               run: |
                 python -m pip install --upgrade pip setuptools wheel
                 python -m pip install pytest pytest-cov coveralls
-                python -m pip install "apache-airflow${{ matrix.airflow-version }}" "apache-airflow-providers-postgres<6"
+                python -m pip install "apache-airflow${{ matrix.airflow-version }}" "apache-airflow-providers-postgres<6.0"
             - name: Run the test with coverage
               run: pytest --cov
             - name: Coveralls
@@ -79,13 +88,11 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest]
-                python-version: ['3.9']
+                python-version: ['3.10']
 
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
-              with:
-                fetch-depth: 0
             - name: Set up Python ${{ matrix.python-version }}
               uses: actions/setup-python@v5
               with:
@@ -102,13 +109,11 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest]
-                python-version: ['3.9']
+                python-version: ['3.10']
 
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
-              with:
-                fetch-depth: 0
             - name: Set up Python ${{ matrix.python-version }}
               uses: actions/setup-python@v5
               with:
@@ -118,4 +123,4 @@ jobs:
             - name: Test the style
               # This is equivalent to an allowed falure.
               # continue-on-error: true
-              run: pycodestyle --count dlairflow
+              run: pycodestyle --statistics --count dlairflow
