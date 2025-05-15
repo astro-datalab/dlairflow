@@ -77,7 +77,10 @@ def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite):
     # Import inside the function to avoid creating $HOME/airflow.
     #
     from airflow.hooks.base import BaseHook
-    from airflow.providers.postgres.operators.postgres import PostgresOperator
+    try:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
+    except ImportError:
+        from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -113,7 +116,10 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite):
     # Import inside the function to avoid creating $HOME/airflow.
     #
     from airflow.hooks.base import BaseHook
-    from airflow.providers.postgres.operators.postgres import PostgresOperator
+    try:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
+    except ImportError:
+        from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -170,7 +176,10 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
     # Import inside the function to avoid creating $HOME/airflow.
     #
     from airflow.hooks.base import BaseHook
-    from airflow.providers.postgres.operators.postgres import PostgresOperator
+    try:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
+    except ImportError:
+        from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -214,7 +223,10 @@ def test_vacuum_analyze(monkeypatch, temporary_airflow_home, tables, full, overw
     # Import inside the function to avoid creating $HOME/airflow.
     #
     from airflow.hooks.base import BaseHook
-    from airflow.providers.postgres.operators.postgres import PostgresOperator
+    try:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
+    except ImportError:
+        from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 

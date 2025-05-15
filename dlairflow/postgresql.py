@@ -9,7 +9,10 @@ Standard tasks for working with PostgreSQL that can be imported into a DAG.
 import os
 from airflow.operators.bash import BashOperator
 from airflow.hooks.base import BaseHook
-from airflow.providers.postgres.operators.postgres import PostgresOperator
+try:
+    from airflow.providers.postgres.operators.postgres import PostgresOperator
+except ImportError:
+    from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
 from .util import user_scratch, ensure_sql
 
 
