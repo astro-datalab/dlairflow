@@ -11,8 +11,10 @@ from airflow.operators.bash import BashOperator
 from airflow.hooks.base import BaseHook
 try:
     from airflow.providers.postgres.operators.postgres import PostgresOperator
+    _legacy_postgres = True
 except ImportError:
     from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    _legacy_postgres = False
 from .util import user_scratch, ensure_sql
 
 
@@ -131,10 +133,17 @@ CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
-    return PostgresOperator(task_id="q3c_index",
-                            postgres_conn_id=connection,
-                            sql=f"sql/{sql_basename}",
-                            params={'schema': schema, 'table': table, 'ra': ra, 'dec': dec})
+    if _legacy_postgres:
+        return PostgresOperator(task_id="q3c_index",
+                                postgres_conn_id=connection,
+                                sql=f"sql/{sql_basename}",
+                                params={'schema': schema, 'table': table, 'ra': ra, 'dec': dec})
+
+    else:
+        return PostgresOperator(sql=f"sql/{sql_basename}",
+                                parameters={'schema': schema, 'table': table, 'ra': ra, 'dec': dec},
+                                conn_id=connection,
+                                task_id="q3c_index")
 
 
 def index_columns(connection, schema, table, columns, overwrite=False):
