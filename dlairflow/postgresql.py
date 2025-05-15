@@ -216,7 +216,7 @@ CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
 
     else:
         return PostgresOperator(sql=f"sql/{sql_basename}",
-                                parameters={'schema': schema, 'table': table, 'columns': columns},
+                                params={'schema': schema, 'table': table, 'columns': columns},
                                 conn_id=connection,
                                 task_id="index_columns")
 
@@ -280,7 +280,7 @@ ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('"
 
     else:
         return PostgresOperator(sql=f"sql/{sql_basename}",
-                                parameters={'schema': schema, 'primary_keys': primary_keys},
+                                params={'schema': schema, 'primary_keys': primary_keys},
                                 conn_id=connection,
                                 task_id="primary_key")
 
@@ -343,8 +343,8 @@ VACUUM {% if params.full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params.schema }}
     else:
         return PostgresOperator(sql=f"sql/{sql_basename}",
                                 autocommit=True,
-                                parameters={'schema': schema,
-                                            'tables': tables,
-                                            'full': full},
+                                params={'schema': schema,
+                                        'tables': tables,
+                                        'full': full},
                                 conn_id=connection,
                                 task_id="vacuum_analyze")
