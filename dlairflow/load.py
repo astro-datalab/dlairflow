@@ -6,7 +6,12 @@ dlairflow.load
 
 Tasks that involve ingesting data.
 """
-from airflow.operators.bash import BashOperator
+try:
+    from airflow.providers.standard.operators.bash import BashOperator
+    _legacy_bash = False
+except ImportError:
+    from airflow.operators.bash import BashOperator
+    _legacy_bash = True
 from .postgresql import _connection_to_environment
 from .util import user_scratch
 
