@@ -208,10 +208,17 @@ CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
-    return PostgresOperator(task_id="index_columns",
-                            postgres_conn_id=connection,
-                            sql=f"sql/{sql_basename}",
-                            params={'schema': schema, 'table': table, 'columns': columns})
+    if _legacy_postgres:
+        return PostgresOperator(task_id="index_columns",
+                                postgres_conn_id=connection,
+                                sql=f"sql/{sql_basename}",
+                                params={'schema': schema, 'table': table, 'columns': columns})
+
+    else:
+        return PostgresOperator(sql=f"sql/{sql_basename}",
+                                parameters={'schema': schema, 'table': table, 'columns': columns},
+                                conn_id=connection,
+                                task_id="index_columns")
 
 
 def primary_key(connection, schema, primary_keys, overwrite=False):
@@ -265,10 +272,17 @@ ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('"
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
-    return PostgresOperator(task_id="primary_key",
-                            postgres_conn_id=connection,
-                            sql=f"sql/{sql_basename}",
-                            params={'schema': schema, 'primary_keys': primary_keys})
+    if _legacy_postgres:
+        return PostgresOperator(task_id="primary_key",
+                                postgres_conn_id=connection,
+                                sql=f"sql/{sql_basename}",
+                                params={'schema': schema, 'primary_keys': primary_keys})
+
+    else:
+        return PostgresOperator(sql=f"sql/{sql_basename}",
+                                parameters={'schema': schema, 'primary_keys': primary_keys},
+                                conn_id=connection,
+                                task_id="primary_key")
 
 
 def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
@@ -317,10 +331,20 @@ VACUUM {% if params.full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params.schema }}
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
-    return PostgresOperator(task_id="vacuum_analyze",
-                            postgres_conn_id=connection,
-                            sql=f"sql/{sql_basename}",
-                            autocommit=True,
-                            params={'schema': schema,
+    if _legacy_postgres:
+        return PostgresOperator(task_id="vacuum_analyze",
+                                postgres_conn_id=connection,
+                                sql=f"sql/{sql_basename}",
+                                autocommit=True,
+                                params={'schema': schema,
                                     'tables': tables,
                                     'full': full})
+
+    else:
+        return PostgresOperator(sql=f"sql/{sql_basename}",
+                                autocommit=True,
+                                parameters={'schema': schema,
+                                    'tables': tables,
+                                    'full': full},
+                                conn_id=connection,
+                                task_id="vacuum_analyze")
