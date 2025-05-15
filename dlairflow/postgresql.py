@@ -141,7 +141,7 @@ CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }
 
     else:
         return PostgresOperator(sql=f"sql/{sql_basename}",
-                                parameters={'schema': schema, 'table': table, 'ra': ra, 'dec': dec},
+                                params={'schema': schema, 'table': table, 'ra': ra, 'dec': dec},
                                 conn_id=connection,
                                 task_id="q3c_index")
 
@@ -337,14 +337,14 @@ VACUUM {% if params.full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params.schema }}
                                 sql=f"sql/{sql_basename}",
                                 autocommit=True,
                                 params={'schema': schema,
-                                    'tables': tables,
-                                    'full': full})
+                                        'tables': tables,
+                                        'full': full})
 
     else:
         return PostgresOperator(sql=f"sql/{sql_basename}",
                                 autocommit=True,
                                 parameters={'schema': schema,
-                                    'tables': tables,
-                                    'full': full},
+                                            'tables': tables,
+                                            'full': full},
                                 conn_id=connection,
                                 task_id="vacuum_analyze")
