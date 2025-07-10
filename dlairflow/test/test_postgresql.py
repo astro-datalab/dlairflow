@@ -42,6 +42,32 @@ def temporary_airflow_home(tmp_path_factory):
     del os.environ['AIRFLOW_HOME']
 
 
+def test__PostgresOperatorWrapper(monkeypatch):
+    """Test translation of PostgresOperator keyword arguments.
+    """
+    #
+    # Import inside the function to avoid creating $HOME/airflow.
+    #
+    from airflow.hooks.base import BaseHook
+    try:
+        from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    except ImportError:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
+
+    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
+
+    p = import_module('..postgresql', package='dlairflow.test')
+
+    def return_kwargs(**kwargs):
+        return kwargs
+
+    monkeypatch.setattr(p, '_legacy_postgres', True)
+    monkeypatch.setattr(p, 'PostgresOperator', return_kwargs)
+    kw = p._PostgresOperatorWrapper(conn_id='foo')
+    assert 'postgres_conn_id' in kw
+    assert kw['postgres_conn_id'] == 'foo'
+
+
 @pytest.mark.parametrize('task_function,dump_dir', [('pg_dump_schema', 'dump_dir'),
                                                     ('pg_restore_schema', 'dump_dir')])
 def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump_dir):
