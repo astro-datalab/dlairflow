@@ -5,7 +5,10 @@ dlairflow Change Log
 0.1.4 (unreleased)
 ------------------
 
-* No changes yet.
+* Add additional database support functions; add tests for near-future versions
+  of Airflow (PR `#9`_).
+
+.. _`#9`: https://github.com/astro-datalab/dlairflow/pull/9
 
 0.1.3 (2025-04-17)
 ------------------
