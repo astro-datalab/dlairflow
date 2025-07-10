@@ -120,9 +120,9 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite):
     #
     from airflow.hooks.base import BaseHook
     try:
-        from airflow.providers.postgres.operators.postgres import PostgresOperator
-    except ImportError:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    except ImportError:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -180,9 +180,9 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
     #
     from airflow.hooks.base import BaseHook
     try:
-        from airflow.providers.postgres.operators.postgres import PostgresOperator
-    except ImportError:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    except ImportError:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -227,9 +227,9 @@ def test_vacuum_analyze(monkeypatch, temporary_airflow_home, tables, full, overw
     #
     from airflow.hooks.base import BaseHook
     try:
-        from airflow.providers.postgres.operators.postgres import PostgresOperator
-    except ImportError:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    except ImportError:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
