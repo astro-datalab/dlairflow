@@ -8,18 +8,18 @@ Standard tasks for working with PostgreSQL that can be imported into a DAG.
 """
 import os
 from airflow.hooks.base import BaseHook
+# _legacy_bash = False
 try:
     from airflow.providers.standard.operators.bash import BashOperator
-    _legacy_bash = False
 except ImportError:
     from airflow.operators.bash import BashOperator
-    _legacy_bash = True
+    # _legacy_bash = True
+_legacy_postgres = False
 try:
+    from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+except ImportError:
     from airflow.providers.postgres.operators.postgres import PostgresOperator
     _legacy_postgres = True
-except ImportError:
-    from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
-    _legacy_postgres = False
 from .util import user_scratch, ensure_sql
 
 
