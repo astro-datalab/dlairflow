@@ -81,9 +81,9 @@ def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite):
     #
     from airflow.hooks.base import BaseHook
     try:
-        from airflow.providers.postgres.operators.postgres import PostgresOperator
-    except ImportError:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    except ImportError:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 

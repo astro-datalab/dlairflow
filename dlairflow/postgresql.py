@@ -8,6 +8,7 @@ Standard tasks for working with PostgreSQL that can be imported into a DAG.
 """
 import os
 from airflow.hooks.base import BaseHook
+from .util import user_scratch, ensure_sql
 # _legacy_bash = False
 try:
     from airflow.providers.standard.operators.bash import BashOperator
@@ -20,7 +21,6 @@ try:
 except ImportError:
     from airflow.providers.postgres.operators.postgres import PostgresOperator
     _legacy_postgres = True
-from .util import user_scratch, ensure_sql
 
 
 def _connection_to_environment(connection):
