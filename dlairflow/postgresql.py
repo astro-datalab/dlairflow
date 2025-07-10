@@ -45,6 +45,16 @@ def _connection_to_environment(connection):
     return env
 
 
+def _PostgresOperatorWrapper(**kwargs):
+    """Handle different call signatures for PostgresOperator in different
+    versions of Airflow.
+    """
+    if _legacy_postgres:
+        kwargs['postgres_conn_id'] = kwargs['conn_id']
+        del kwargs['conn_id']
+    return PostgresOperator(**kwargs)
+
+
 def pg_dump_schema(connection, schema, dump_dir):
     """Dump an entire database schema using :command:`pg_dump`.
 
@@ -138,17 +148,10 @@ CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
-    if _legacy_postgres:
-        return PostgresOperator(task_id="q3c_index",
-                                postgres_conn_id=connection,
-                                sql=f"sql/{sql_basename}",
-                                params={'schema': schema, 'table': table, 'ra': ra, 'dec': dec})
-
-    else:
-        return PostgresOperator(sql=f"sql/{sql_basename}",
-                                params={'schema': schema, 'table': table, 'ra': ra, 'dec': dec},
-                                conn_id=connection,
-                                task_id="q3c_index")
+    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
+                                    params={'schema': schema, 'table': table, 'ra': ra, 'dec': dec},
+                                    conn_id=connection,
+                                    task_id="q3c_index")
 
 
 def index_columns(connection, schema, table, columns, overwrite=False):
@@ -213,17 +216,10 @@ CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
-    if _legacy_postgres:
-        return PostgresOperator(task_id="index_columns",
-                                postgres_conn_id=connection,
-                                sql=f"sql/{sql_basename}",
-                                params={'schema': schema, 'table': table, 'columns': columns})
-
-    else:
-        return PostgresOperator(sql=f"sql/{sql_basename}",
-                                params={'schema': schema, 'table': table, 'columns': columns},
-                                conn_id=connection,
-                                task_id="index_columns")
+    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
+                                    params={'schema': schema, 'table': table, 'columns': columns},
+                                    conn_id=connection,
+                                    task_id="index_columns")
 
 
 def primary_key(connection, schema, primary_keys, overwrite=False):
@@ -277,17 +273,10 @@ ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('"
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
-    if _legacy_postgres:
-        return PostgresOperator(task_id="primary_key",
-                                postgres_conn_id=connection,
-                                sql=f"sql/{sql_basename}",
-                                params={'schema': schema, 'primary_keys': primary_keys})
-
-    else:
-        return PostgresOperator(sql=f"sql/{sql_basename}",
-                                params={'schema': schema, 'primary_keys': primary_keys},
-                                conn_id=connection,
-                                task_id="primary_key")
+    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
+                                    params={'schema': schema, 'primary_keys': primary_keys},
+                                    conn_id=connection,
+                                    task_id="primary_key")
 
 
 def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
@@ -336,20 +325,10 @@ VACUUM {% if params.full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params.schema }}
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
-    if _legacy_postgres:
-        return PostgresOperator(task_id="vacuum_analyze",
-                                postgres_conn_id=connection,
-                                sql=f"sql/{sql_basename}",
-                                autocommit=True,
-                                params={'schema': schema,
-                                        'tables': tables,
-                                        'full': full})
-
-    else:
-        return PostgresOperator(sql=f"sql/{sql_basename}",
-                                autocommit=True,
-                                params={'schema': schema,
-                                        'tables': tables,
-                                        'full': full},
-                                conn_id=connection,
-                                task_id="vacuum_analyze")
+    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
+                                    autocommit=True,
+                                    params={'schema': schema,
+                                            'tables': tables,
+                                            'full': full},
+                                    conn_id=connection,
+                                    task_id="vacuum_analyze")
