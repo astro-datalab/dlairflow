@@ -265,7 +265,7 @@ def test_vacuum_analyze(monkeypatch, temporary_airflow_home, tables, full, overw
                            full=full, overwrite=overwrite)
         assert isinstance(test_operator, PostgresOperator)
         assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                                'dlairflow.postgresql.vacuum_analyze.sql'))
+                                  'dlairflow.postgresql.vacuum_analyze.sql'))
         assert test_operator.task_id == 'vacuum_analyze'
         assert test_operator.sql == 'sql/dlairflow.postgresql.vacuum_analyze.sql'
         env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
