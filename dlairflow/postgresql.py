@@ -289,7 +289,7 @@ def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
     schema : :class:`str`
         The name of the database schema.
     table : :class:`str` or :class:`list`
-        The tables to operate on.
+        The table(s) to operate on.
     full : :class:`bool`, optional
         If ``True``, run ``VACUUM FULL``.
     overwrite : :class:`bool`, optional
@@ -300,6 +300,11 @@ def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
     :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
         A task to run a ``VACUUM`` command.
 
+    Raises
+    ------
+    ValueError
+        If `table` is not a string or list-like object.
+
     Notes
     -----
     The returned :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
@@ -309,8 +314,10 @@ def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
     """
     if isinstance(table, str):
         tables = [table]
-    else:
+    elif isinstance(table, (list, tuple, set, frozenset)):
         tables = table
+    else:
+        raise ValueError("Unknown type for table, must be string or list-like!")
     sql_dir = ensure_sql()
     sql_basename = "dlairflow.postgresql.vacuum_analyze.sql"
     sql_file = os.path.join(sql_dir, sql_basename)
