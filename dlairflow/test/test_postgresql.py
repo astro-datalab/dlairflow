@@ -42,6 +42,29 @@ def temporary_airflow_home(tmp_path_factory):
     del os.environ['AIRFLOW_HOME']
 
 
+def test__PostgresOperatorWrapper(monkeypatch):
+    """Test translation of PostgresOperator keyword arguments.
+    """
+    #
+    # Import inside the function to avoid creating $HOME/airflow.
+    #
+    from airflow.hooks.base import BaseHook
+
+    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
+
+    p = import_module('..postgresql', package='dlairflow.test')
+
+    def return_kwargs(**kwargs):
+        return kwargs
+
+    monkeypatch.setattr(p, '_legacy_postgres', True)
+    monkeypatch.setattr(p, 'PostgresOperator', return_kwargs)
+
+    kw = p._PostgresOperatorWrapper(conn_id='foo')
+    assert 'postgres_conn_id' in kw
+    assert kw['postgres_conn_id'] == 'foo'
+
+
 @pytest.mark.parametrize('task_function,dump_dir', [('pg_dump_schema', 'dump_dir'),
                                                     ('pg_restore_schema', 'dump_dir')])
 def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump_dir):
@@ -51,7 +74,10 @@ def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump
     # Import inside the function to avoid creating $HOME/airflow.
     #
     from airflow.hooks.base import BaseHook
-    from airflow.operators.bash import BashOperator
+    try:
+        from airflow.providers.standard.operators.bash import BashOperator
+    except ImportError:
+        from airflow.operators.bash import BashOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -77,7 +103,10 @@ def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite):
     # Import inside the function to avoid creating $HOME/airflow.
     #
     from airflow.hooks.base import BaseHook
-    from airflow.providers.postgres.operators.postgres import PostgresOperator
+    try:
+        from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    except ImportError:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -113,7 +142,10 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite):
     # Import inside the function to avoid creating $HOME/airflow.
     #
     from airflow.hooks.base import BaseHook
-    from airflow.providers.postgres.operators.postgres import PostgresOperator
+    try:
+        from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    except ImportError:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -170,7 +202,10 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
     # Import inside the function to avoid creating $HOME/airflow.
     #
     from airflow.hooks.base import BaseHook
-    from airflow.providers.postgres.operators.postgres import PostgresOperator
+    try:
+        from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    except ImportError:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -203,3 +238,52 @@ ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2");
 
 """
     assert tmpl.render(params=test_operator.params) == expected_render
+
+
+@pytest.mark.parametrize('tables,full,overwrite', [('table1', False, False),
+                                                   (['table1', 'table2'], True, True),
+                                                   (False, False, False)])
+def test_vacuum_analyze(monkeypatch, temporary_airflow_home, tables, full, overwrite):
+    """Test the vacuum_analyze function.
+    """
+    #
+    # Import inside the function to avoid creating $HOME/airflow.
+    #
+    from airflow.hooks.base import BaseHook
+    try:
+        from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
+    except ImportError:
+        from airflow.providers.postgres.operators.postgres import PostgresOperator
+
+    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
+
+    p = import_module('..postgresql', package='dlairflow.test')
+
+    tf = p.__dict__['vacuum_analyze']
+    if tables:
+        test_operator = tf("login,password,host,schema", 'test_schema', tables,
+                           full=full, overwrite=overwrite)
+        assert isinstance(test_operator, PostgresOperator)
+        assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
+                                  'dlairflow.postgresql.vacuum_analyze.sql'))
+        assert test_operator.task_id == 'vacuum_analyze'
+        assert test_operator.sql == 'sql/dlairflow.postgresql.vacuum_analyze.sql'
+        env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
+                          keep_trailing_newline=True)
+        tmpl = env.get_template(test_operator.sql)
+        expected_render = """--
+-- Created by dlairflow.postgresql.vacuum_analyze().
+-- Call vacuum_analyze(..., overwrite=True) to replace this file.
+--
+
+VACUUM {0} VERBOSE ANALYZE test_schema.table1;
+
+""".format('FULL' if full else '')
+        if full:
+            expected_render += "VACUUM FULL VERBOSE ANALYZE test_schema.table2;\n\n"
+        assert tmpl.render(params=test_operator.params) == expected_render
+    else:
+        with pytest.raises(ValueError) as excinfo:
+            test_operator = tf("login,password,host,schema", 'test_schema', tables,
+                               full=full, overwrite=overwrite)
+        assert excinfo.value.args[0] == "Unknown type for table, must be string or list-like!"
