@@ -20,7 +20,10 @@ def test_load_table(monkeypatch, temporary_airflow_home, task_function, load_dir
     # Import inside the function to avoid creating $HOME/airflow.
     #
     from airflow.hooks.base import BaseHook
-    from airflow.operators.bash import BashOperator
+    try:
+        from airflow.providers.standard.operators.bash import BashOperator
+    except ImportError:
+        from airflow.operators.bash import BashOperator
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
