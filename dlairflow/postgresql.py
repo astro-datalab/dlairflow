@@ -146,7 +146,7 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec',
 --
 CREATE INDEX {{ params.table }}_q3c_ang2ipix
     ON {{ params.schema }}.{{ params.table }} (q3c_ang2ipix("{{ params.ra }}", "{{ params.dec }}"))
-    WITH (fillfactor=100){%- if params.tablespace -%} TABLESPACE {{ params.tablespace }}{%- endif -%};
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }};
 """
         with open(sql_file, 'w') as s:
