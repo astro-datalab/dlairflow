@@ -257,7 +257,7 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite, tablespace)
                        {"table1": "column1",
                         "table2": ("column1", "column2"),
                         "table3": 12345},
-                       overwrite=overwrite)
+                       tablespace=tablespace, overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
                               'dlairflow.postgresql.primary_key.sql'))
