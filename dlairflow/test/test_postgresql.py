@@ -273,10 +273,10 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite, tablespace)
 --
 
 ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
-    WITH (fillfactor=100) TABLESPACE {tablespace};
+    WITH (fillfactor=100) USING INDEX TABLESPACE {tablespace};
 
 ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
-    WITH (fillfactor=100) TABLESPACE {tablespace};
+    WITH (fillfactor=100) USING INDEX TABLESPACE {tablespace};
 
 -- Unknown type: 12345.
 

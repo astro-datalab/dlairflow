@@ -275,10 +275,10 @@ def primary_key(connection, schema, primary_keys, tablespace=None, overwrite=Fal
 {% for table, columns in params.primary_keys.items() %}
 {% if columns is string -%}
 ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns }}")
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
+    WITH (fillfactor=100){%- if params.tablespace %} USING INDEX TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% elif columns is sequence -%}
 ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('", "') }}")
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
+    WITH (fillfactor=100){%- if params.tablespace %} USING INDEX TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% else -%}
 -- Unknown type: {{ columns }}.
 {% endif -%}
