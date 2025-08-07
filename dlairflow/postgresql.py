@@ -231,7 +231,7 @@ CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
                                     task_id="index_columns")
 
 
-def primary_key(connection, schema, primary_keys, overwrite=False):
+def primary_key(connection, schema, primary_keys, tablespace=None, overwrite=False):
     """Create a primary key on one or more tables in `schema`.
 
     Parameters
@@ -243,6 +243,8 @@ def primary_key(connection, schema, primary_keys, overwrite=False):
     primary_keys : :class:`dict`
         A dictionary containing the of the table in `schema` mapped to the
         primary key column(s). See below for details.
+    tablespace : :class:`str`, optional
+        Create the indexes in a specific tablespace if set.
     overwrite : :class:`bool`, optional
         If ``True`` replace any existing SQL template file.
 
@@ -273,10 +275,10 @@ def primary_key(connection, schema, primary_keys, overwrite=False):
 {% for table, columns in params.primary_keys.items() %}
 {% if columns is string -%}
 ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns }}")
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% elif columns is sequence -%}
 ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('", "') }}")
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% else -%}
 -- Unknown type: {{ columns }}.
 {% endif -%}

@@ -234,8 +234,9 @@ CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
     assert tmpl.render(params=test_operator.params) == expected_render
 
 
-@pytest.mark.parametrize('overwrite', [(False, ), (True, )])
-def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
+@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
+                                                  (False, 'data3'), (True, 'data3')])
+def test_primary_key(monkeypatch, temporary_airflow_home, overwrite, tablespace):
     """Test the primary_key function.
     """
     #
@@ -265,7 +266,23 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
     env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
                       keep_trailing_newline=True)
     tmpl = env.get_template(test_operator.sql)
-    expected_render = """--
+    if tablespace:
+        expected_render = f"""--
+-- Created by dlairflow.postgresql.primary_key().
+-- Call primary_key(..., overwrite=True) to replace this file.
+--
+
+ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+-- Unknown type: 12345.
+
+"""
+    else:
+        expected_render = """--
 -- Created by dlairflow.postgresql.primary_key().
 -- Call primary_key(..., overwrite=True) to replace this file.
 --
