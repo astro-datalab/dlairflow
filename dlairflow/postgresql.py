@@ -287,7 +287,9 @@ ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('"
         with open(sql_file, 'w') as s:
             s.write(sql_data)
     return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'primary_keys': primary_keys},
+                                    params={'schema': schema,
+                                            'primary_keys': primary_keys,
+                                            'tablespace': tablespace},
                                     conn_id=connection,
                                     task_id="primary_key")
 
