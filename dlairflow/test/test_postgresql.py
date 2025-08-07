@@ -270,9 +270,11 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
 -- Call primary_key(..., overwrite=True) to replace this file.
 --
 
-ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1");
+ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
+    WITH (fillfactor=100);
 
-ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2");
+ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
+    WITH (fillfactor=100);
 
 -- Unknown type: 12345.
 

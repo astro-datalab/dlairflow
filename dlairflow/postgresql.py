@@ -272,9 +272,11 @@ def primary_key(connection, schema, primary_keys, overwrite=False):
 --
 {% for table, columns in params.primary_keys.items() %}
 {% if columns is string -%}
-ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns }}");
+ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns }}")
+    WITH (fillfactor=100);
 {% elif columns is sequence -%}
-ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('", "') }}");
+ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('", "') }}")
+    WITH (fillfactor=100);
 {% else -%}
 -- Unknown type: {{ columns }}.
 {% endif -%}
