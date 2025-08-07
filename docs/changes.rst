@@ -2,7 +2,12 @@
 dlairflow Change Log
 ====================
 
-0.1.4 (unreleased)
+0.1.5 (unreleased)
+------------------
+
+* No changes yet.
+
+0.1.4 (2025-07-24)
 ------------------
 
 * Add additional database support functions; add tests for near-future versions
