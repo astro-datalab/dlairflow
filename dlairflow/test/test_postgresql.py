@@ -95,7 +95,8 @@ def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump
         assert test_operator.params['dump_dir'] == 'dump_dir'
 
 
-@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None), (False, 'data3'), (True, 'data3')])
+@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
+                                                  (False, 'data3'), (True, 'data3')])
 def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite, tablespace):
     """Test the q3c_index function.
     """
