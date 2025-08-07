@@ -115,7 +115,7 @@ def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite, tablespace):
 
     tf = p.__dict__['q3c_index']
     test_operator = tf("login,password,host,schema", 'q3c_schema', 'q3c_table',
-                       overwrite=overwrite, tablespace=tablespace)
+                       tablespace=tablespace, overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' / 'dlairflow.postgresql.q3c_index.sql'))
     assert test_operator.task_id == 'q3c_index'
@@ -146,8 +146,9 @@ CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
     assert tmpl.render(params=test_operator.params) == expected_render
 
 
-@pytest.mark.parametrize('overwrite', [(False, ), (True, )])
-def test_index_columns(monkeypatch, temporary_airflow_home, overwrite):
+@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
+                                                  (False, 'data3'), (True, 'data3')])
+def test_index_columns(monkeypatch, temporary_airflow_home, overwrite, tablespace):
     """Test the index_columns function.
     """
     #
@@ -169,7 +170,7 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite):
                                 ('id', 'survey', 'program'),
                                 12345,
                                 {'test_schema.uint64': 'specobjid'}],
-                       overwrite=overwrite)
+                       tablespace=tablespace, overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
                               'dlairflow.postgresql.index_columns.sql'))
@@ -178,7 +179,34 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite):
     env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
                       keep_trailing_newline=True)
     tmpl = env.get_template(test_operator.sql)
-    expected_render = """--
+    if tablespace:
+        expected_render = f"""--
+-- Created by dlairflow.postgresql.index_columns().
+-- Call index_columns(..., overwrite=True) to replace this file.
+--
+
+CREATE INDEX test_table_ra_idx
+    ON test_schema.test_table ("ra")
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+CREATE INDEX test_table_dec_idx
+    ON test_schema.test_table ("dec")
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+CREATE INDEX test_table_id_survey_program_idx
+    ON test_schema.test_table ("id", "survey", "program")
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+-- Unknown type: 12345.
+
+CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
+    ON test_schema.test_table (test_schema.uint64(specobjid))
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+
+"""
+    else:
+        expected_render = """--
 -- Created by dlairflow.postgresql.index_columns().
 -- Call index_columns(..., overwrite=True) to replace this file.
 --

@@ -159,7 +159,7 @@ CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }
                                     task_id="q3c_index")
 
 
-def index_columns(connection, schema, table, columns, overwrite=False):
+def index_columns(connection, schema, table, columns, tablespace=None, overwrite=False):
     """Create "generic" indexes for a set of columns
 
     Parameters
@@ -173,6 +173,8 @@ def index_columns(connection, schema, table, columns, overwrite=False):
     columns : :class:`list`
         A list of columns to index. See below for the possible entries in
         the list of columns.
+    tablespace : :class:`str`, optional
+        Create the indexes in a specific tablespace if set.
     overwrite : :class:`bool`, optional
         If ``True`` replace any existing SQL template file.
 
@@ -203,17 +205,17 @@ def index_columns(connection, schema, table, columns, overwrite=False):
 {% if col is string -%}
 CREATE INDEX {{ params.table }}_{{ col }}_idx
     ON {{ params.schema }}.{{ params.table }} ("{{ col }}")
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% elif col is mapping -%}
 {% for key, value in col.items() -%}
 CREATE_INDEX {{ params.table }}_{{ key|replace('.', '_') }}_{{ value }}_idx
     ON {{ params.schema }}.{{ params.table }} ({{ key }}({{ value }}))
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% endfor %}
 {% elif col is sequence -%}
 CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
     ON {{ params.schema }}.{{ params.table }} ("{{ col|join('", "') }}")
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% else -%}
 -- Unknown type: {{ col }}.
 {% endif -%}
@@ -222,7 +224,9 @@ CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
         with open(sql_file, 'w') as s:
             s.write(sql_data)
     return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'table': table, 'columns': columns},
+                                    params={'schema': schema, 'table': table,
+                                            'columns': columns,
+                                            'tablespace': tablespace},
                                     conn_id=connection,
                                     task_id="index_columns")
 
