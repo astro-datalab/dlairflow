@@ -110,7 +110,8 @@ def pg_restore_schema(connection, schema, dump_dir):
                         append_env=True)
 
 
-def q3c_index(connection, schema, table, ra='ra', dec='dec', overwrite=False):
+def q3c_index(connection, schema, table, ra='ra', dec='dec',
+              tablespace=None, overwrite=False):
     """Create a q3c index on `schema`.`table`.
 
     Parameters
@@ -125,6 +126,8 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec', overwrite=False):
         Name of the column containing Right Ascension, default 'ra'.
     dec : :class:`str`, optional
         Name of the column containing Declination, default 'dec'.
+    tablespace : :class:`str`, optional
+        Create the index in a specific tablespace if set.
     overwrite : :class:`bool`, optional
         If ``True`` replace any existing SQL template file.
 
@@ -143,13 +146,15 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec', overwrite=False):
 --
 CREATE INDEX {{ params.table }}_q3c_ang2ipix
     ON {{ params.schema }}.{{ params.table }} (q3c_ang2ipix("{{ params.ra }}", "{{ params.dec }}"))
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace -%}TABLESPACE {{ params.tablespace }}{%- endif -%};
 CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }};
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
     return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'table': table, 'ra': ra, 'dec': dec},
+                                    params={'schema': schema, 'table': table,
+                                            'ra': ra, 'dec': dec,
+                                            'tablespace': tablespace},
                                     conn_id=connection,
                                     task_id="q3c_index")
 
