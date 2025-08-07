@@ -5,7 +5,9 @@ dlairflow Change Log
 0.1.5 (unreleased)
 ------------------
 
-* No changes yet.
+* Support ``TABLESPACE`` when creating indexes (PR `#11`_).
+
+.. _`#11`: https://github.com/astro-datalab/dlairflow/pull/11
 
 0.1.4 (2025-07-24)
 ------------------
