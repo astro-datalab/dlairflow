@@ -340,7 +340,9 @@ def truncate_table(connection, schema, table, restart=False, cascade=False,
 -- Created by dlairflow.postgresql.truncate_table().
 -- Call truncate_table(..., overwrite=True) to replace this file.
 --
-TRUNCATE TABLE {% for table in params.tables -%}{{ params.schema }}.{{ table }}{{ '' if loop.last else ', ' }}{%- endfor %}
+TRUNCATE TABLE {% for table in params.tables -%}
+    {{ params.schema }}.{{ table }}{{ '' if loop.last else ', ' }}
+    {%- endfor %}
     {% if params.restart -%}RESTART{%- else -%}CONTINUE{%- endif %} IDENTITY
     {% if params.cascade -%}CASCADE{%- else -%}RESTRICT{%- endif %};
 """
