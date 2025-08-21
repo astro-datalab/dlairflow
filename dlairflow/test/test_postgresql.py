@@ -95,8 +95,9 @@ def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump
         assert test_operator.params['dump_dir'] == 'dump_dir'
 
 
-@pytest.mark.parametrize('overwrite', [(False, ), (True, )])
-def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite):
+@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
+                                                  (False, 'data3'), (True, 'data3')])
+def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite, tablespace):
     """Test the q3c_index function.
     """
     #
@@ -114,7 +115,7 @@ def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite):
 
     tf = p.__dict__['q3c_index']
     test_operator = tf("login,password,host,schema", 'q3c_schema', 'q3c_table',
-                       overwrite=overwrite)
+                       tablespace=tablespace, overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' / 'dlairflow.postgresql.q3c_index.sql'))
     assert test_operator.task_id == 'q3c_index'
@@ -122,7 +123,18 @@ def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite):
     env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
                       keep_trailing_newline=True)
     tmpl = env.get_template(test_operator.sql)
-    expected_render = """--
+    if tablespace:
+        expected_render = f"""--
+-- Created by dlairflow.postgresql.q3c_index().
+-- Call q3c_index(..., overwrite=True) to replace this file.
+--
+CREATE INDEX q3c_table_q3c_ang2ipix
+    ON q3c_schema.q3c_table (q3c_ang2ipix("ra", "dec"))
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
+"""
+    else:
+        expected_render = """--
 -- Created by dlairflow.postgresql.q3c_index().
 -- Call q3c_index(..., overwrite=True) to replace this file.
 --
@@ -134,8 +146,9 @@ CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
     assert tmpl.render(params=test_operator.params) == expected_render
 
 
-@pytest.mark.parametrize('overwrite', [(False, ), (True, )])
-def test_index_columns(monkeypatch, temporary_airflow_home, overwrite):
+@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
+                                                  (False, 'data3'), (True, 'data3')])
+def test_index_columns(monkeypatch, temporary_airflow_home, overwrite, tablespace):
     """Test the index_columns function.
     """
     #
@@ -157,7 +170,7 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite):
                                 ('id', 'survey', 'program'),
                                 12345,
                                 {'test_schema.uint64': 'specobjid'}],
-                       overwrite=overwrite)
+                       tablespace=tablespace, overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
                               'dlairflow.postgresql.index_columns.sql'))
@@ -166,7 +179,34 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite):
     env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
                       keep_trailing_newline=True)
     tmpl = env.get_template(test_operator.sql)
-    expected_render = """--
+    if tablespace:
+        expected_render = f"""--
+-- Created by dlairflow.postgresql.index_columns().
+-- Call index_columns(..., overwrite=True) to replace this file.
+--
+
+CREATE INDEX test_table_ra_idx
+    ON test_schema.test_table ("ra")
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+CREATE INDEX test_table_dec_idx
+    ON test_schema.test_table ("dec")
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+CREATE INDEX test_table_id_survey_program_idx
+    ON test_schema.test_table ("id", "survey", "program")
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+-- Unknown type: 12345.
+
+CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
+    ON test_schema.test_table (test_schema.uint64(specobjid))
+    WITH (fillfactor=100) TABLESPACE {tablespace};
+
+
+"""
+    else:
+        expected_render = """--
 -- Created by dlairflow.postgresql.index_columns().
 -- Call index_columns(..., overwrite=True) to replace this file.
 --
@@ -194,8 +234,9 @@ CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
     assert tmpl.render(params=test_operator.params) == expected_render
 
 
-@pytest.mark.parametrize('overwrite', [(False, ), (True, )])
-def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
+@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
+                                                  (False, 'data3'), (True, 'data3')])
+def test_primary_key(monkeypatch, temporary_airflow_home, overwrite, tablespace):
     """Test the primary_key function.
     """
     #
@@ -216,7 +257,7 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
                        {"table1": "column1",
                         "table2": ("column1", "column2"),
                         "table3": 12345},
-                       overwrite=overwrite)
+                       tablespace=tablespace, overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
                               'dlairflow.postgresql.primary_key.sql'))
@@ -225,14 +266,32 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite):
     env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
                       keep_trailing_newline=True)
     tmpl = env.get_template(test_operator.sql)
-    expected_render = """--
+    if tablespace:
+        expected_render = f"""--
 -- Created by dlairflow.postgresql.primary_key().
 -- Call primary_key(..., overwrite=True) to replace this file.
 --
 
-ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1");
+ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
+    WITH (fillfactor=100) USING INDEX TABLESPACE {tablespace};
 
-ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2");
+ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
+    WITH (fillfactor=100) USING INDEX TABLESPACE {tablespace};
+
+-- Unknown type: 12345.
+
+"""
+    else:
+        expected_render = """--
+-- Created by dlairflow.postgresql.primary_key().
+-- Call primary_key(..., overwrite=True) to replace this file.
+--
+
+ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
+    WITH (fillfactor=100);
+
+ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
+    WITH (fillfactor=100);
 
 -- Unknown type: 12345.
 

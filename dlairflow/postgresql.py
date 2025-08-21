@@ -110,7 +110,8 @@ def pg_restore_schema(connection, schema, dump_dir):
                         append_env=True)
 
 
-def q3c_index(connection, schema, table, ra='ra', dec='dec', overwrite=False):
+def q3c_index(connection, schema, table, ra='ra', dec='dec',
+              tablespace=None, overwrite=False):
     """Create a q3c index on `schema`.`table`.
 
     Parameters
@@ -125,6 +126,8 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec', overwrite=False):
         Name of the column containing Right Ascension, default 'ra'.
     dec : :class:`str`, optional
         Name of the column containing Declination, default 'dec'.
+    tablespace : :class:`str`, optional
+        Create the index in a specific tablespace if set.
     overwrite : :class:`bool`, optional
         If ``True`` replace any existing SQL template file.
 
@@ -143,18 +146,20 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec', overwrite=False):
 --
 CREATE INDEX {{ params.table }}_q3c_ang2ipix
     ON {{ params.schema }}.{{ params.table }} (q3c_ang2ipix("{{ params.ra }}", "{{ params.dec }}"))
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }};
 """
         with open(sql_file, 'w') as s:
             s.write(sql_data)
     return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'table': table, 'ra': ra, 'dec': dec},
+                                    params={'schema': schema, 'table': table,
+                                            'ra': ra, 'dec': dec,
+                                            'tablespace': tablespace},
                                     conn_id=connection,
                                     task_id="q3c_index")
 
 
-def index_columns(connection, schema, table, columns, overwrite=False):
+def index_columns(connection, schema, table, columns, tablespace=None, overwrite=False):
     """Create "generic" indexes for a set of columns
 
     Parameters
@@ -168,6 +173,8 @@ def index_columns(connection, schema, table, columns, overwrite=False):
     columns : :class:`list`
         A list of columns to index. See below for the possible entries in
         the list of columns.
+    tablespace : :class:`str`, optional
+        Create the indexes in a specific tablespace if set.
     overwrite : :class:`bool`, optional
         If ``True`` replace any existing SQL template file.
 
@@ -198,17 +205,17 @@ def index_columns(connection, schema, table, columns, overwrite=False):
 {% if col is string -%}
 CREATE INDEX {{ params.table }}_{{ col }}_idx
     ON {{ params.schema }}.{{ params.table }} ("{{ col }}")
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% elif col is mapping -%}
 {% for key, value in col.items() -%}
 CREATE_INDEX {{ params.table }}_{{ key|replace('.', '_') }}_{{ value }}_idx
     ON {{ params.schema }}.{{ params.table }} ({{ key }}({{ value }}))
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% endfor %}
 {% elif col is sequence -%}
 CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
     ON {{ params.schema }}.{{ params.table }} ("{{ col|join('", "') }}")
-    WITH (fillfactor=100);
+    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% else -%}
 -- Unknown type: {{ col }}.
 {% endif -%}
@@ -217,12 +224,14 @@ CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
         with open(sql_file, 'w') as s:
             s.write(sql_data)
     return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'table': table, 'columns': columns},
+                                    params={'schema': schema, 'table': table,
+                                            'columns': columns,
+                                            'tablespace': tablespace},
                                     conn_id=connection,
                                     task_id="index_columns")
 
 
-def primary_key(connection, schema, primary_keys, overwrite=False):
+def primary_key(connection, schema, primary_keys, tablespace=None, overwrite=False):
     """Create a primary key on one or more tables in `schema`.
 
     Parameters
@@ -234,6 +243,8 @@ def primary_key(connection, schema, primary_keys, overwrite=False):
     primary_keys : :class:`dict`
         A dictionary containing the of the table in `schema` mapped to the
         primary key column(s). See below for details.
+    tablespace : :class:`str`, optional
+        Create the indexes in a specific tablespace if set.
     overwrite : :class:`bool`, optional
         If ``True`` replace any existing SQL template file.
 
@@ -263,9 +274,11 @@ def primary_key(connection, schema, primary_keys, overwrite=False):
 --
 {% for table, columns in params.primary_keys.items() %}
 {% if columns is string -%}
-ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns }}");
+ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns }}")
+    WITH (fillfactor=100){%- if params.tablespace %} USING INDEX TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% elif columns is sequence -%}
-ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('", "') }}");
+ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('", "') }}")
+    WITH (fillfactor=100){%- if params.tablespace %} USING INDEX TABLESPACE {{ params.tablespace }}{%- endif -%};
 {% else -%}
 -- Unknown type: {{ columns }}.
 {% endif -%}
@@ -274,7 +287,9 @@ ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('"
         with open(sql_file, 'w') as s:
             s.write(sql_data)
     return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'primary_keys': primary_keys},
+                                    params={'schema': schema,
+                                            'primary_keys': primary_keys,
+                                            'tablespace': tablespace},
                                     conn_id=connection,
                                     task_id="primary_key")
 
