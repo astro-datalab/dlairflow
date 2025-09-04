@@ -112,21 +112,22 @@ def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite, tablespace):
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
     p = import_module('..postgresql', package='dlairflow.test')
-
-    tf = p.__dict__['q3c_index']
+    function_name = 'q3c_index'
+    tf = p.__dict__[function_name]
     test_operator = tf("login,password,host,schema", 'q3c_schema', 'q3c_table',
                        tablespace=tablespace, overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
-    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' / 'dlairflow.postgresql.q3c_index.sql'))
-    assert test_operator.task_id == 'q3c_index'
-    assert test_operator.sql == 'sql/dlairflow.postgresql.q3c_index.sql'
+    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
+                              f'dlairflow.postgresql.{function_name}.sql'))
+    assert test_operator.task_id == function_name
+    assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
     env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
                       keep_trailing_newline=True)
     tmpl = env.get_template(test_operator.sql)
     if tablespace:
         expected_render = f"""--
--- Created by dlairflow.postgresql.q3c_index().
--- Call q3c_index(..., overwrite=True) to replace this file.
+-- Created by dlairflow.postgresql.{function_name}().
+-- Call {function_name}(..., overwrite=True) to replace this file.
 --
 CREATE INDEX q3c_table_q3c_ang2ipix
     ON q3c_schema.q3c_table (q3c_ang2ipix("ra", "dec"))
@@ -134,9 +135,9 @@ CREATE INDEX q3c_table_q3c_ang2ipix
 CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
 """
     else:
-        expected_render = """--
--- Created by dlairflow.postgresql.q3c_index().
--- Call q3c_index(..., overwrite=True) to replace this file.
+        expected_render = f"""--
+-- Created by dlairflow.postgresql.{function_name}().
+-- Call {function_name}(..., overwrite=True) to replace this file.
 --
 CREATE INDEX q3c_table_q3c_ang2ipix
     ON q3c_schema.q3c_table (q3c_ang2ipix("ra", "dec"))
@@ -163,8 +164,8 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite, tablespac
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
     p = import_module('..postgresql', package='dlairflow.test')
-
-    tf = p.__dict__['index_columns']
+    function_name = 'index_columns'
+    tf = p.__dict__[function_name]
     test_operator = tf("login,password,host,schema", 'test_schema', 'test_table',
                        columns=['ra', 'dec',
                                 ('id', 'survey', 'program'),
@@ -173,16 +174,16 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite, tablespac
                        tablespace=tablespace, overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                              'dlairflow.postgresql.index_columns.sql'))
-    assert test_operator.task_id == 'index_columns'
-    assert test_operator.sql == 'sql/dlairflow.postgresql.index_columns.sql'
+                              f'dlairflow.postgresql.{function_name}.sql'))
+    assert test_operator.task_id == function_name
+    assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
     env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
                       keep_trailing_newline=True)
     tmpl = env.get_template(test_operator.sql)
     if tablespace:
         expected_render = f"""--
--- Created by dlairflow.postgresql.index_columns().
--- Call index_columns(..., overwrite=True) to replace this file.
+-- Created by dlairflow.postgresql.{function_name}().
+-- Call {function_name}(..., overwrite=True) to replace this file.
 --
 
 CREATE INDEX test_table_ra_idx
@@ -206,9 +207,9 @@ CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
 
 """
     else:
-        expected_render = """--
--- Created by dlairflow.postgresql.index_columns().
--- Call index_columns(..., overwrite=True) to replace this file.
+        expected_render = f"""--
+-- Created by dlairflow.postgresql.{function_name}().
+-- Call {function_name}(..., overwrite=True) to replace this file.
 --
 
 CREATE INDEX test_table_ra_idx
@@ -251,8 +252,8 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite, tablespace)
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
     p = import_module('..postgresql', package='dlairflow.test')
-
-    tf = p.__dict__['primary_key']
+    function_name = 'primary_key'
+    tf = p.__dict__[function_name]
     test_operator = tf("login,password,host,schema", 'test_schema',
                        {"table1": "column1",
                         "table2": ("column1", "column2"),
@@ -260,16 +261,16 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite, tablespace)
                        tablespace=tablespace, overwrite=overwrite)
     assert isinstance(test_operator, PostgresOperator)
     assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                              'dlairflow.postgresql.primary_key.sql'))
-    assert test_operator.task_id == 'primary_key'
-    assert test_operator.sql == 'sql/dlairflow.postgresql.primary_key.sql'
+                              f'dlairflow.postgresql.{function_name}.sql'))
+    assert test_operator.task_id == function_name
+    assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
     env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
                       keep_trailing_newline=True)
     tmpl = env.get_template(test_operator.sql)
     if tablespace:
         expected_render = f"""--
--- Created by dlairflow.postgresql.primary_key().
--- Call primary_key(..., overwrite=True) to replace this file.
+-- Created by dlairflow.postgresql.{function_name}().
+-- Call {function_name}(..., overwrite=True) to replace this file.
 --
 
 ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
@@ -282,9 +283,9 @@ ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
 
 """
     else:
-        expected_render = """--
--- Created by dlairflow.postgresql.primary_key().
--- Call primary_key(..., overwrite=True) to replace this file.
+        expected_render = f"""--
+-- Created by dlairflow.postgresql.{function_name}().
+-- Call {function_name}(..., overwrite=True) to replace this file.
 --
 
 ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
