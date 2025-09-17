@@ -294,6 +294,69 @@ ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('"
                                     task_id="primary_key")
 
 
+def truncate_table(connection, schema, table, restart=False, cascade=False,
+                   overwrite=False):
+    """Run ``TRUNCATE TABLE`` on one or more tables in `schema`.
+
+    Parameters
+    ----------
+    connection : :class:`str`
+        An Airflow database connection string.
+    schema : :class:`str`
+        The name of the database schema.
+    table : :class:`str` or :class:`list`
+        The table(s) to operate on.
+    restart : :class:`bool`, optional
+        If ``True``, any sequences associated with columns in the table(s) will
+        be reset. The default is not to reset such sequences.
+    cascade : :class:`bool`, optional
+        If ``True``, the ``TRUNCATE`` command will also truncate tables connected
+        by foreign key relationships. *This is extrememly dangerous!*
+    overwrite : :class:`bool`, optional
+        If ``True``, replace any existing SQL template file.
+
+    Returns
+    -------
+    :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+        A task to run a ``TRUNCATE TABLE`` command.
+
+    Raises
+    ------
+    ValueError
+        If `table` is not a string or list-like object.
+
+    """
+    if isinstance(table, str):
+        tables = [table]
+    elif isinstance(table, (list, tuple, set, frozenset)):
+        tables = table
+    else:
+        raise ValueError("Unknown type for table, must be string or list-like!")
+    sql_dir = ensure_sql()
+    sql_basename = "dlairflow.postgresql.truncate_table.sql"
+    sql_file = os.path.join(sql_dir, sql_basename)
+    if overwrite or not os.path.exists(sql_file):
+        sql_data = """--
+-- Created by dlairflow.postgresql.truncate_table().
+-- Call truncate_table(..., overwrite=True) to replace this file.
+--
+TRUNCATE TABLE {% for table in params.tables -%}
+    {{ params.schema }}.{{ table }}{{ '' if loop.last else ', ' }}
+    {%- endfor %}
+    {% if params.restart -%}RESTART{%- else -%}CONTINUE{%- endif %} IDENTITY
+    {% if params.cascade -%}CASCADE{%- else -%}RESTRICT{%- endif %};
+"""
+        with open(sql_file, 'w') as s:
+            s.write(sql_data)
+    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
+                                    params={'schema': schema,
+                                            'tables': tables,
+                                            'restart': restart,
+                                            'cascade': cascade},
+                                    conn_id=connection,
+                                    task_id="truncate_table")
+
+
 def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
     """Run ``VACUUM`` and ``ANALYZE`` on one or more tables in `schema`.
 

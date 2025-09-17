@@ -5,9 +5,11 @@ dlairflow Change Log
 0.1.5 (unreleased)
 ------------------
 
+* Add function to support ``TRUNCATE TABLE`` tasks (PR `#12`_).
 * Support ``TABLESPACE`` when creating indexes (PR `#11`_).
 
 .. _`#11`: https://github.com/astro-datalab/dlairflow/pull/11
+.. _`#12`: https://github.com/astro-datalab/dlairflow/pull/12
 
 0.1.4 (2025-07-24)
 ------------------
