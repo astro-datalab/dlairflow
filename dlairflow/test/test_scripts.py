@@ -4,7 +4,7 @@
 """
 import os
 import pytest
-from ..scripts import clean_sql_templates
+from ..scripts import clean_dlairflow_sql_templates
 from .test_postgresql import temporary_airflow_home
 
 
@@ -19,7 +19,7 @@ def test_clean_sql_templates(temporary_airflow_home):
         with open(full_name, 'w') as SQL:
             SQL.write(f'--\n-- {function_name}\n--\n')
         assert os.path.exists(full_name)
-    assert clean_sql_templates() == 0
+    assert clean_dlairflow_sql_templates() == 0
     for function_name in function_names:
         full_name = str(sql_dir, f'dlairflow.postgresql.{function_name}.sql')
         assert not os.path.exists(full_name)
