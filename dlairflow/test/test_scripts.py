@@ -21,5 +21,5 @@ def test_clean_sql_templates(temporary_airflow_home):
         assert os.path.exists(full_name)
     assert clean_dlairflow_sql_templates() == 0
     for function_name in function_names:
-        full_name = str(sql_dir, f'dlairflow.postgresql.{function_name}.sql')
+        full_name = os.path.join(sql_dir, f'dlairflow.postgresql.{function_name}.sql')
         assert not os.path.exists(full_name)
