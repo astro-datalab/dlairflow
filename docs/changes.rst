@@ -2,7 +2,12 @@
 dlairflow Change Log
 ====================
 
-0.1.5 (unreleased)
+0.1.6 (unreleased)
+------------------
+
+* No changes yet.
+
+0.1.5 (2025-09-18)
 ------------------
 
 * Add function to support ``TRUNCATE TABLE`` tasks (PR `#12`_).
