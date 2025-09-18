@@ -11,8 +11,8 @@ import glob
 from .util import ensure_sql
 
 
-def clean_sql_templates():
-    """Entry-point for :command:`clean_sql_templates`.
+def clean_dlairflow_sql_templates():
+    """Entry-point for :command:`clean_dlairflow_sql_templates`.
 
     Returns
     -------
