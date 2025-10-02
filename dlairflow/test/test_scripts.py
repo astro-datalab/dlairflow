@@ -21,7 +21,7 @@ def test_clean_sql_templates(temporary_airflow_home, monkeypatch):
             SQL.write(f'--\n-- {function_name}\n--\n')
         assert os.path.exists(full_name)
     with monkeypatch.context() as m:
-        m.setattr(sys, 'argv', ['clean_dlairflow_sql_templates'])
+        m.setattr(sys, 'argv', ['clean_dlairflow_sql_templates', '--debug'])
         assert clean_dlairflow_sql_templates() == 0
         for function_name in function_names:
             full_name = os.path.join(sql_dir, f'dlairflow.postgresql.{function_name}.sql')
