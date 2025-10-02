@@ -9,7 +9,7 @@ from ..scripts import clean_dlairflow_sql_templates
 from .test_postgresql import temporary_airflow_home
 
 
-def test_clean_sql_templates(temporary_airflow_home, monkeypatch):
+def test_clean_sql_templates(temporary_airflow_home, monkeypatch, capsys):
     """Test clean_sql_templates.
     """
     sql_dir = str(temporary_airflow_home / 'dags' / 'sql')
@@ -23,6 +23,8 @@ def test_clean_sql_templates(temporary_airflow_home, monkeypatch):
     with monkeypatch.context() as m:
         m.setattr(sys, 'argv', ['clean_dlairflow_sql_templates', '--debug'])
         assert clean_dlairflow_sql_templates() == 0
+        captured = capsys.readouterr()
+        assert captured.out.split('\n')[0] == f"DEBUG: template_files = glob.glob(os.path.join('{sql_dir}', 'dlairflow.postgresql.*.sql'))"
         for function_name in function_names:
             full_name = os.path.join(sql_dir, f'dlairflow.postgresql.{function_name}.sql')
             assert not os.path.exists(full_name)
