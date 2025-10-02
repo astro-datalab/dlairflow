@@ -120,8 +120,8 @@ jobs:
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
-              run: python -m pip install --upgrade pip setuptools wheel pycodestyle
+              run: python -m pip install --upgrade pip setuptools wheel flake8
             - name: Test the style
               # This is equivalent to an allowed falure.
               # continue-on-error: true
-              run: pycodestyle --statistics --count dlairflow
+              run: flake8 --statistics --count dlairflow

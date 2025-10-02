@@ -13,7 +13,6 @@ except ImportError:
     from airflow.operators.bash import BashOperator
     # _legacy_bash = True
 from .postgresql import _connection_to_environment
-from .util import user_scratch
 
 
 def load_table_with_fits2db(connection, schema, table, load_dir):
