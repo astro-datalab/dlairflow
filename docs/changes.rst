@@ -2,7 +2,7 @@
 dlairflow Change Log
 ====================
 
-0.1.6 (unreleased)
+0.1.6 (2025-10-16)
 ------------------
 
 * Add script to clean up outdated SQL templates (PR `#16`_).
