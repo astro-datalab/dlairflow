@@ -5,9 +5,11 @@ dlairflow Change Log
 0.1.6 (unreleased)
 ------------------
 
+* Add script to clean up outdated SQL templates (PR `#16`_).
 * Merge ``development-plan`` branch to archive original plan (PR `#15`_).
 
 .. _`#15`: https://github.com/astro-datalab/dlairflow/pull/15
+.. _`#16`: https://github.com/astro-datalab/dlairflow/pull/16
 
 0.1.5 (2025-09-18)
 ------------------
