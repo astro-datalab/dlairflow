@@ -100,7 +100,7 @@ def get(source, item):
         rows = cursor.fetchall()
         if len(rows) == 0:
             raise ValueError(f"Could not find a schema matching '{schema}'.")
-        metadata['schema'] = dict(zip(cursor.column_names, rows[0]))
+        metadata['schema'] = dict(zip([d[0] for d in cursor.description], rows[0]))
         #
         # Get table information.
         #
@@ -122,7 +122,7 @@ def get(source, item):
                 raise ValueError(f"Could not find a table matching '{table}' in schema '{schema}'.")
         metadata['table'] = list()
         for row in rows:
-            metadata['table'].append(dict(zip(cursor.column_names, row)))
+            metadata['table'].append(dict(zip([d[0] for d in cursor.description], row)))
         #
         # Get column information.
         #
@@ -132,5 +132,5 @@ def get(source, item):
             column_parameters = (t['table_schema'], t['table_name'])
             cursor.execute(column_query, column_parameters)
             rows = cursor.fetchall()
-            metadata['column'].append(dict(zip(cursor.column_names, row)))
+            metadata['column'].append(dict(zip([d[0] for d in cursor.description], row)))
     return metadata
