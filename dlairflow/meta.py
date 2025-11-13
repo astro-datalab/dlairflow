@@ -126,11 +126,23 @@ def get(source, item):
         #
         # Get column information.
         #
-        metadata['column'] = list()
         for t in metadata['table']:
-            column_query = "SELECT * FROM information_schema.columns WHERE table_schema = %s AND table_name = %s;"
-            column_parameters = (t['table_schema'], t['table_name'])
+            if column is None:
+                column_query = "SELECT * FROM information_schema.columns WHERE table_schema = %s AND table_name = %s;"
+                column_parameters = (t['table_schema'], t['table_name'])
+            else:
+                column_query = "SELECT * FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s;"
+                column_parameters = (t['table_schema'], t['table_name'], column)
             cursor.execute(column_query, column_parameters)
             rows = cursor.fetchall()
-            metadata['column'].append(dict(zip([d[0] for d in cursor.description], row)))
+            if len(rows) == 0:
+                if column is None:
+                    # A schema without tables is possible, but a a table without columns is weird.
+                    warnings.warn(f"Table '{schema}.{table}' has no columns. This is unusual.", UserWarning)
+                    return metadata
+                else:
+                    raise ValueError(f"Could not find a column matching '{column}' in table '{schema}.{table}'.")
+            metadata['column'] = list()
+            for row in rows:
+                metadata['column'].append(dict(zip([d[0] for d in cursor.description], row)))
     return metadata
