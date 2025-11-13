@@ -128,16 +128,18 @@ def get(source, item):
         #
         for t in metadata['table']:
             if column is None:
-                column_query = "SELECT * FROM information_schema.columns WHERE table_schema = %s AND table_name = %s;"
+                column_query = ("SELECT * FROM information_schema.columns WHERE " +
+                    "table_schema = %s AND table_name = %s;")
                 column_parameters = (t['table_schema'], t['table_name'])
             else:
-                column_query = "SELECT * FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s;"
+                column_query = ("SELECT * FROM information_schema.columns WHERE " +
+                    "table_schema = %s AND table_name = %s AND column_name = %s;")
                 column_parameters = (t['table_schema'], t['table_name'], column)
             cursor.execute(column_query, column_parameters)
             rows = cursor.fetchall()
             if len(rows) == 0:
                 if column is None:
-                    # A schema without tables is possible, but a a table without columns is weird.
+                    # A schema without tables is possible, but a table without columns is weird.
                     warnings.warn(f"Table '{schema}.{table}' has no columns. This is unusual.", UserWarning)
                     return metadata
                 else:
