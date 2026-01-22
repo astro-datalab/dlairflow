@@ -28,7 +28,7 @@ def fitsverify(filename):
     :class:`~airflow.operators.bash.BashOperator`
         A BashOperator that will execute :command:`fitsverify`.
     """
-    fitsverify_template = "fitsverify {{params.filename}}"
+    fitsverify_template = "fitsverify -l {{params.filename}}"
     return BashOperator(task_id='fitsverify',
                         bash_command=fitsverify_template,
                         params={'filename': filename})
@@ -83,7 +83,7 @@ def get(source, item):
     metadata = {'schema': schema, 'table': table, 'column': column}
     if os.path.isfile(source):
         # Treat source as a file.
-        pass
+        return metadata
     else:
         #
         # Treat source as a database connection ID.
