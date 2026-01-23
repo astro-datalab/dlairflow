@@ -62,19 +62,19 @@ def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F
 
 
 @pytest.mark.parametrize('test_source,item', [('felis.yaml', 'name1'),
-                                         ('felis.yaml', 'name1.name2'),
-                                         ('felis.yaml', 'name1.name2.name3'),
-                                         ('felis.yaml', 'name1.name2.name3.name4'),])
+                                              ('felis.yaml', 'name1.name2'),
+                                              ('felis.yaml', 'name1.name2.name3'),
+                                              ('felis.yaml', 'name1.name2.name3.name4'),])
 def test_get(temporary_airflow_home, temporary_felis_file, test_source, item):  # noqa: F811
     """Test the get function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    try:
-        from airflow.providers.standard.operators.bash import BashOperator
-    except ImportError:
-        from airflow.operators.bash import BashOperator
+    # try:
+    #     from airflow.providers.standard.operators.bash import BashOperator
+    # except ImportError:
+    #     from airflow.operators.bash import BashOperator
 
     p = import_module('..meta', package='dlairflow.test')
 

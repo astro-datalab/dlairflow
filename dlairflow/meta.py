@@ -129,11 +129,11 @@ def get(source, item):
         for t in metadata['table']:
             if column is None:
                 column_query = ("SELECT * FROM information_schema.columns WHERE " +
-                    "table_schema = %s AND table_name = %s;")
+                                "table_schema = %s AND table_name = %s;")
                 column_parameters = (t['table_schema'], t['table_name'])
             else:
                 column_query = ("SELECT * FROM information_schema.columns WHERE " +
-                    "table_schema = %s AND table_name = %s AND column_name = %s;")
+                                "table_schema = %s AND table_name = %s AND column_name = %s;")
                 column_parameters = (t['table_schema'], t['table_name'], column)
             cursor.execute(column_query, column_parameters)
             rows = cursor.fetchall()
