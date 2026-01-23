@@ -47,13 +47,20 @@ jobs:
             - name: Install Python dependencies
               run: |
                 python -m pip install --upgrade pip setuptools wheel
-                python -m pip install pytest
+                python -m pip install pytest pytest-cov coveralls
                 python -m pip install "apache-airflow${{ matrix.airflow-version }}" "apache-airflow-providers-postgres${{ matrix.airflow-postgres-version }}"
             - name: Run the test
+              if: ${{ !fromJSON(matrix.coverage) }}
               run: pytest
+            - name: Run the test with coverage
+              if: ${{ fromJSON(matrix.coverage) }}
+              run: pytest --cov
             - name: Coveralls
               if: ${{ fromJSON(matrix.coverage) }}
-              run: echo coveralls
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+              run: coveralls
 
     coverage:
         name: Test coverage
