@@ -17,14 +17,17 @@ jobs:
             matrix:
                 include:
                     - os: ubuntu-latest
-                      python-version: '3.12'
-                      airflow-version: '<3.1'
+                      coverage: false
+                      python-version: '3.13'
+                      airflow-version: '<4.0'
                       airflow-postgres-version: '<7.0'
                     - os: ubuntu-latest
+                      coverage: false
                       python-version: '3.12'
-                      airflow-version: '<2.11'
-                      airflow-postgres-version: '<7.0'
+                      airflow-version: '<3.0'
+                      airflow-postgres-version: '<6.0'
                     - os: ubuntu-latest
+                      coverage: true
                       python-version: '3.10'
                       airflow-version: '<2.10'
                       airflow-postgres-version: '<6.0'
@@ -48,6 +51,9 @@ jobs:
                 python -m pip install "apache-airflow${{ matrix.airflow-version }}" "apache-airflow-providers-postgres${{ matrix.airflow-postgres-version }}"
             - name: Run the test
               run: pytest
+            - name: Coveralls
+              if: ${{ matrix.coverage }}
+              run: echo coveralls
 
     coverage:
         name: Test coverage
@@ -57,7 +63,7 @@ jobs:
             matrix:
                 os: [ubuntu-latest]
                 python-version: ['3.9']
-                airflow-version: ['<2.10']
+                airflow-version: ['<3.0']
 
         steps:
             - name: Checkout code
