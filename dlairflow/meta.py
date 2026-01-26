@@ -147,4 +147,5 @@ def get(source, item):
             metadata['column'] = list()
             for row in rows:
                 metadata['column'].append(dict(zip([d[0] for d in cursor.description], row)))
+        conn.close()
     return metadata

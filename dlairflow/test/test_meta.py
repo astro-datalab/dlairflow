@@ -8,6 +8,50 @@ from importlib import import_module
 from .test_postgresql import MockConnection, temporary_airflow_home  # noqa: F401
 
 
+class MockCursor(object):
+    """Simulate a database cursor object.
+    """
+    def __init__(self, hook):
+        self.hook = hook
+
+    def execute(self, query, parameters):
+        """Simulate executing a query.
+        """
+        return
+
+    def fetchall(self):
+        """Simulate returning rows.
+        """
+        return [('a',), ('b',), ('c',)]
+
+    @property
+    def description(self):
+        return [('a',), ('b',), ('c',)]
+
+
+class MockConn(object):
+    """Simulate a database connection object.
+    """
+
+    def __init__(self, hook):
+        self.hook = hook
+
+    def cursor(self):
+        """Return a mock cursor object.
+        """
+        return MockCursor(self.hook)
+
+
+class MockHook(MockConnection):
+    """Simulate a PostgresHook object.
+    """
+
+    def get_conn(self):
+        """Return a connection object, which is only used to get a cursor object.
+        """
+        return MockCursor(self)
+
+
 @pytest.fixture(scope="function")
 def temporary_felis_file(tmp_path_factory):
     """Create a temporary felis file.
@@ -40,6 +84,13 @@ tables:
     os.remove(filename)
 
 
+@pytest.fixture
+def mock_postgres(monkeypatch):
+    """Configure a mock class to intercept database calls.
+    """
+    monkeypatch.setattr('dlairflow.meta.PostgresHook', MockHook)
+
+
 @pytest.mark.parametrize('task_function,filename', [('fitsverify', 'filename.fits'),])
 def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F811
     """Test the fitsverify task.
@@ -65,7 +116,7 @@ def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F
                                               ('felis.yaml', 'name1.name2'),
                                               ('felis.yaml', 'name1.name2.name3'),
                                               ('felis.yaml', 'name1.name2.name3.name4'),])
-def test_get(temporary_airflow_home, temporary_felis_file, test_source, item):  # noqa: F811
+def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_source, item):  # noqa: F811
     """Test the get function.
     """
     #
