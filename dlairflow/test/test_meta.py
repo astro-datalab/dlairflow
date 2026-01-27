@@ -13,20 +13,62 @@ class MockCursor(object):
     """
     def __init__(self, hook):
         self.hook = hook
+        self.last_query = None
+        self.last_parameters = None
+        return
 
     def execute(self, query, parameters):
         """Simulate executing a query.
         """
+        self.last_query = query
+        self.last_parameters = parameters
         return
 
     def fetchall(self):
         """Simulate returning rows.
         """
-        return [('a',), ('b',), ('c',)]
+        if self.last_query == "SELECT * FROM information_schema.schemata WHERE schema_name = %s;":
+            if self.last_parameters[0] == 'no_such_schema':
+                return []
+            else:
+                return [(self.hook.schema, self.last_parameters[0], 'owner'),]
+        elif self.last_query == "SELECT * FROM information_schema.tables WHERE table_schema = %s;":
+            if self.last_parameters[0] == 'has_no_tables':
+                return []
+            else:
+                return [(self.hook.schema, self.last_parameters[0], 'name1', 'BASE TABLE'),
+                        (self.hook.schema, self.last_parameters[0], 'name2', 'BASE TABLE'),
+                        (self.hook.schema, self.last_parameters[0], 'name3', 'BASE TABLE')]
+        elif self.last_query == "SELECT * FROM information_schema.tables WHERE table_schema = %s AND table_name = %s;":
+            if self.last_parameters[1] == 'no_such_table':
+                return []
+            else:
+                return [(self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'BASE TABLE'),]
+        elif self.last_query == "SELECT * FROM information_schema.columns WHERE table_schema = %s AND table_name = %s;":
+            if self.last_parameters[1] == 'has_no_columns':
+                return []
+            else:
+                return [(self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'name1'),
+                        (self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'name2'),
+                        (self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'name3')]
+        elif self.last_query == "SELECT * FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s;":
+            if self.last_parameters[2] == 'no_such_column':
+                return []
+            else:
+                return [(self.hook.schema, self.last_parameters[0], self.last_parameters[1], self.last_parameters[2]),]
+
 
     @property
     def description(self):
-        return [('a',), ('b',), ('c',)]
+        """Column names, etc. associated with the last query.
+        """
+        if 'information_schema.schemata' in self.last_query:
+            return [('catalog_name',), ('schema_name',), ('schema_owner',)]
+        elif 'information_schema.tables' in self.last_query:
+            return [('table_catalog',), ('table_schema',), ('table_name',), ('table_type',)]
+        else:
+            # information_schema.columns
+            return [('table_catalog',), ('table_schema',), ('table_name',), ('column_name',)]
 
 
 class MockConn(object):
@@ -41,6 +83,11 @@ class MockConn(object):
         """
         return MockCursor(self.hook)
 
+    def close(self):
+        """Simulate closing.
+        """
+        return
+
 
 class MockHook(MockConnection):
     """Simulate a PostgresHook object.
@@ -49,7 +96,7 @@ class MockHook(MockConnection):
     def get_conn(self):
         """Return a connection object, which is only used to get a cursor object.
         """
-        return MockCursor(self)
+        return MockConn(self)
 
 
 @pytest.fixture(scope="function")
@@ -115,7 +162,15 @@ def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F
 @pytest.mark.parametrize('test_source,item', [('felis.yaml', 'name1'),
                                               ('felis.yaml', 'name1.name2'),
                                               ('felis.yaml', 'name1.name2.name3'),
-                                              ('felis.yaml', 'name1.name2.name3.name4'),])
+                                              ('felis.yaml', 'name1.name2.name3.name4'),
+                                              ('login,password,host,database', 'no_such_schema'),
+                                              ('login,password,host,database', 'name1'),
+                                              ('login,password,host,database', 'has_no_tables'),
+                                              ('login,password,host,database', 'name1.no_such_table'),
+                                              ('login,password,host,database', 'name1.name2'),
+                                              ('login,password,host,database', 'name1.has_no_columns'),
+                                              ('login,password,host,database', 'name1.name2.no_such_column'),
+                                              ('login,password,host,database', 'name1.name2.name3'),])
 def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_source, item):  # noqa: F811
     """Test the get function.
     """
@@ -133,24 +188,63 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
 
     if test_source == 'felis.yaml':
         source = temporary_felis_file
+        if 'name4' in item:
+            with pytest.raises(ValueError) as excinfo:
+                meta = get(source, item)
+            assert excinfo.value.args[0] == f"Could not split string '{item}' into schema, table, etc."
+        elif 'name3' in item:
+            meta = get(source, item)
+            assert meta['schema'] == 'name1'
+            assert meta['table'] == 'name2'
+            assert meta['column'] == 'name3'
+        elif 'name2' in item:
+            meta = get(source, item)
+            assert meta['schema'] == 'name1'
+            assert meta['table'] == 'name2'
+            assert meta['column'] is None
+        else:
+            meta = get(source, item)
+            assert meta['schema'] == 'name1'
+            assert meta['table'] is None
+            assert meta['column'] is None
     else:
         source = test_source
-    if 'name4' in item:
-        with pytest.raises(ValueError) as excinfo:
+        if item == 'no_such_schema':
+            with pytest.raises(ValueError) as excinfo:
+                meta = get(source, item)
+            assert excinfo.value.args[0] == f"Could not find a schema matching '{item}'."
+        elif item == 'has_no_tables':
+            with pytest.warns(UserWarning) as warninfo:
+                meta = get(source, item)
+            assert meta['table'] is None
+            assert len(warninfo) == 1
+            assert warninfo[0].message.args[0] == "Schema 'has_no_tables' has no tables."
+        elif item == 'name1.no_such_table':
+            with pytest.raises(ValueError) as excinfo:
+                meta = get(source, item)
+            # assert meta['table'] is None
+            assert excinfo.value.args[0] == "Could not find a table matching 'no_such_table' in schema 'name1'."
+        elif item == 'name1.name2':
             meta = get(source, item)
-        assert excinfo.value.args[0] == f"Could not split string '{item}' into schema, table, etc."
-    elif 'name3' in item:
-        meta = get(source, item)
-        assert meta['schema'] == 'name1'
-        assert meta['table'] == 'name2'
-        assert meta['column'] == 'name3'
-    elif 'name2' in item:
-        meta = get(source, item)
-        assert meta['schema'] == 'name1'
-        assert meta['table'] == 'name2'
-        assert meta['column'] is None
-    else:
-        meta = get(source, item)
-        assert meta['schema'] == 'name1'
-        assert meta['table'] is None
-        assert meta['column'] is None
+            assert len(meta['table']) == 1
+            assert len(meta['column']) == 3
+        elif item == 'name1.has_no_columns':
+            with pytest.warns(UserWarning) as warninfo:
+                meta = get(source, item)
+            assert len(meta['table']) == 1
+            assert meta['column'] is None
+            assert len(warninfo) == 1
+            assert warninfo[0].message.args[0] == "Table 'name1.has_no_columns' has no columns. This is unusual."
+        elif item == 'name1.name2.no_such_column':
+            with pytest.raises(ValueError) as excinfo:
+                meta = get(source, item)
+            # assert meta['column'] is None
+            assert excinfo.value.args[0] == "Could not find a column matching 'no_such_column' in table 'name1.name2'."
+        elif item == 'name1.name2.name3':
+            meta = get(source, item)
+            assert len(meta['table']) == 1
+            assert len(meta['column']) == 1
+        else:
+            meta = get(source, item)
+            assert len(meta['table']) == 3
+            assert len(meta['column']) == 9

@@ -144,7 +144,8 @@ def get(source, item):
                     return metadata
                 else:
                     raise ValueError(f"Could not find a column matching '{column}' in table '{schema}.{table}'.")
-            metadata['column'] = list()
+            if metadata['column'] is None or metadata['column'] == column:
+                metadata['column'] = list()
             for row in rows:
                 metadata['column'].append(dict(zip([d[0] for d in cursor.description], row)))
         conn.close()
