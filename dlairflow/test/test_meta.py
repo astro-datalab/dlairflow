@@ -39,24 +39,27 @@ class MockCursor(object):
                 return [(self.hook.schema, self.last_parameters[0], 'name1', 'BASE TABLE'),
                         (self.hook.schema, self.last_parameters[0], 'name2', 'BASE TABLE'),
                         (self.hook.schema, self.last_parameters[0], 'name3', 'BASE TABLE')]
-        elif self.last_query == "SELECT * FROM information_schema.tables WHERE table_schema = %s AND table_name = %s;":
+        elif self.last_query == ("SELECT * FROM information_schema.tables WHERE " +
+                                 "table_schema = %s AND table_name = %s;"):
             if self.last_parameters[1] == 'no_such_table':
                 return []
             else:
                 return [(self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'BASE TABLE'),]
-        elif self.last_query == "SELECT * FROM information_schema.columns WHERE table_schema = %s AND table_name = %s;":
+        elif self.last_query == ("SELECT * FROM information_schema.columns WHERE " +
+                                 "table_schema = %s AND table_name = %s;"):
             if self.last_parameters[1] == 'has_no_columns':
                 return []
             else:
                 return [(self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'name1'),
                         (self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'name2'),
                         (self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'name3')]
-        elif self.last_query == "SELECT * FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s;":
+        elif self.last_query == ("SELECT * FROM information_schema.columns WHERE " +
+                                 "table_schema = %s AND table_name = %s AND column_name = %s;"):
             if self.last_parameters[2] == 'no_such_column':
                 return []
             else:
-                return [(self.hook.schema, self.last_parameters[0], self.last_parameters[1], self.last_parameters[2]),]
-
+                return [(self.hook.schema, self.last_parameters[0],
+                         self.last_parameters[1], self.last_parameters[2]),]
 
     @property
     def description(self):
@@ -239,7 +242,8 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
             with pytest.raises(ValueError) as excinfo:
                 meta = get(source, item)
             # assert meta['column'] is None
-            assert excinfo.value.args[0] == "Could not find a column matching 'no_such_column' in table 'name1.name2'."
+            assert excinfo.value.args[0] == ("Could not find a column matching " +
+                                             "'no_such_column' in table 'name1.name2'.")
         elif item == 'name1.name2.name3':
             meta = get(source, item)
             assert len(meta['table']) == 1
