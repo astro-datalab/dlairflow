@@ -207,15 +207,15 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
 
     if test_source == 'felis.yaml':
         source = temporary_felis_file
-        if has_felis:
+        if 'name4' in item:
+            with pytest.raises(ValueError) as excinfo:
+                meta = get(source, item)
+            assert excinfo.value.args[0] == f"Could not split string '{item}' into schema, table, etc."
+        elif has_felis:
             meta = get(source, item)
             assert isinstance(meta, Schema)
         else:
-            if 'name4' in item:
-                with pytest.raises(ValueError) as excinfo:
-                    meta = get(source, item)
-                assert excinfo.value.args[0] == f"Could not split string '{item}' into schema, table, etc."
-            elif 'name3' in item:
+            if 'name3' in item:
                 meta = get(source, item)
                 assert meta['schema'] == 'name1'
                 assert meta['table'] == 'name2'
