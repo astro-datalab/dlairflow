@@ -90,8 +90,9 @@ def get(source, item):
         #
         # Treat source as a file.
         #
-        if _has_felis:
+        if _has_felis:  # pragma: no cover
             return Schema.from_uri(source)
+            # >>> c = Column(name='foo', id='foo', datatype='long')
         else:
             return metadata
     else:
