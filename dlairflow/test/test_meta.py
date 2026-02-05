@@ -113,26 +113,33 @@ def temporary_felis_file(tmp_path_factory):
     """
     data = """name: temporary_schema
 description: "This is a test."
+"@id": temporary_schema
 
 tables:
     - name: table1
       description: "table1 in temporary_schema"
+      "@id": temporary_schema.table1
       columns:
           - name: id1
             datatype: "long"
             description: "Unique identifier"
+            "@id": temporary_schema.table1.id1
           - name: data1
             datatype: "float"
             description: "Real data"
+            "@id": temporary_schema.table1.data1
     - name: table2
       description: "table2 in temporary_schema"
+      "@id": temporary_schema.table1
       columns:
           - name: id2
             datatype: "long"
             description: "Unique identifier"
+            "@id": temporary_schema.table1.id1
           - name: data2
             datatype: "double"
             description: "Double data"
+            "@id": temporary_schema.table1.data1
 """
     filename = tmp_path_factory.mktemp('felis') / 'felis.yaml'
     with open(filename, 'w') as FELIS:
