@@ -130,16 +130,16 @@ tables:
             "@id": temporary_schema.table1.data1
     - name: table2
       description: "table2 in temporary_schema"
-      "@id": temporary_schema.table1
+      "@id": temporary_schema.table2
       columns:
           - name: id2
             datatype: "long"
             description: "Unique identifier"
-            "@id": temporary_schema.table1.id1
+            "@id": temporary_schema.table1.id2
           - name: data2
             datatype: "double"
             description: "Double data"
-            "@id": temporary_schema.table1.data1
+            "@id": temporary_schema.table1.data2
 """
     filename = tmp_path_factory.mktemp('felis') / 'felis.yaml'
     with open(filename, 'w') as FELIS:
