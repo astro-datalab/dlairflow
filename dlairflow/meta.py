@@ -13,6 +13,7 @@ try:
 except ImportError:
     from airflow.operators.bash import BashOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from felis import Schema
 
 
 def fitsverify(filename):
@@ -82,8 +83,11 @@ def get(source, item):
         raise ValueError(f"Could not split string '{item}' into schema, table, etc.")
     metadata = {'schema': schema, 'table': table, 'column': column}
     if os.path.isfile(source):
+        #
         # Treat source as a file.
-        return metadata
+        #
+        # return metadata
+        return Schema.from_uri(source)
     else:
         #
         # Treat source as a database connection ID.

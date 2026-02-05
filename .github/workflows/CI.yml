@@ -49,6 +49,9 @@ jobs:
                 python -m pip install --upgrade pip setuptools wheel
                 python -m pip install pytest pytest-cov coveralls
                 python -m pip install "apache-airflow${{ matrix.airflow-version }}" "apache-airflow-providers-postgres${{ matrix.airflow-postgres-version }}"
+            - name: Optionally install felis
+              if: ${{ matrix.airflow-version == '<4.0' }}
+              run: python -m pip install lsst-felis
             - name: Run the test
               if: ${{ !fromJSON(matrix.coverage) }}
               run: pytest

@@ -6,7 +6,11 @@ import pytest
 import os
 from importlib import import_module
 from .test_postgresql import MockConnection, temporary_airflow_home  # noqa: F401
-
+has_felis = True
+try:
+    from felis import Schema
+except ImportError:
+    has_felis = False
 
 class MockCursor(object):
     """Simulate a database cursor object.
@@ -111,21 +115,23 @@ description: "This is a test."
 
 tables:
     - name: table1
+      description: "table1 in temporary_schema"
       columns:
           - name: id1
             datatype: "long"
             description: "Unique identifier"
           - name: data1
-            datatype: "real"
+            datatype: "float"
             description: "Real data"
     - name: table2
+      description: "table2 in temporary_schema"
       columns:
           - name: id2
             datatype: "long"
             description: "Unique identifier"
           - name: data2
-            datatype: "real"
-            description: "Real data"
+            datatype: "double"
+            description: "Double data"
 """
     filename = tmp_path_factory.mktemp('felis') / 'felis.yaml'
     with open(filename, 'w') as FELIS:
@@ -184,6 +190,8 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
     #     from airflow.providers.standard.operators.bash import BashOperator
     # except ImportError:
     #     from airflow.operators.bash import BashOperator
+    if test_source == 'felis.yaml' and not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
 
     p = import_module('..meta', package='dlairflow.test')
 

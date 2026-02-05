@@ -48,7 +48,10 @@ def test__PostgresOperatorWrapper(monkeypatch):
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    from airflow.hooks.base import BaseHook
+    try:
+        from airflow.sdk.bases.hook import BaseHook
+    except ImportError:
+        from airflow.hooks.base import BaseHook
 
     monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
@@ -73,7 +76,10 @@ def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    from airflow.hooks.base import BaseHook
+    try:
+        from airflow.sdk.bases.hook import BaseHook
+    except ImportError:
+        from airflow.hooks.base import BaseHook
     try:
         from airflow.providers.standard.operators.bash import BashOperator
     except ImportError:
@@ -103,7 +109,10 @@ def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite, tablespace):
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    from airflow.hooks.base import BaseHook
+    try:
+        from airflow.sdk.bases.hook import BaseHook
+    except ImportError:
+        from airflow.hooks.base import BaseHook
     try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
@@ -155,7 +164,10 @@ def test_index_columns(monkeypatch, temporary_airflow_home, overwrite, tablespac
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    from airflow.hooks.base import BaseHook
+    try:
+        from airflow.sdk.bases.hook import BaseHook
+    except ImportError:
+        from airflow.hooks.base import BaseHook
     try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
@@ -243,7 +255,10 @@ def test_primary_key(monkeypatch, temporary_airflow_home, overwrite, tablespace)
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    from airflow.hooks.base import BaseHook
+    try:
+        from airflow.sdk.bases.hook import BaseHook
+    except ImportError:
+        from airflow.hooks.base import BaseHook
     try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
@@ -311,7 +326,10 @@ def test_truncate_table(monkeypatch, temporary_airflow_home, tables, restart, ca
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    from airflow.hooks.base import BaseHook
+    try:
+        from airflow.sdk.bases.hook import BaseHook
+    except ImportError:
+        from airflow.hooks.base import BaseHook
     try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
@@ -364,7 +382,10 @@ def test_vacuum_analyze(monkeypatch, temporary_airflow_home, tables, full, overw
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    from airflow.hooks.base import BaseHook
+    try:
+        from airflow.sdk.bases.hook import BaseHook
+    except ImportError:
+        from airflow.hooks.base import BaseHook
     try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
