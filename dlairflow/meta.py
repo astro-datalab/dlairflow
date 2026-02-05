@@ -13,7 +13,11 @@ try:
 except ImportError:
     from airflow.operators.bash import BashOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from felis import Schema
+_has_felis = True
+try:
+    from felis import Schema
+except ImportError:
+    _has_felis = False
 
 
 def fitsverify(filename):
@@ -86,8 +90,10 @@ def get(source, item):
         #
         # Treat source as a file.
         #
-        # return metadata
-        return Schema.from_uri(source)
+        if _has_felis:
+            return Schema.from_uri(source)
+        else:
+            return metadata
     else:
         #
         # Treat source as a database connection ID.
