@@ -15,7 +15,7 @@ except ImportError:
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 _has_felis = True
 try:
-    from felis import Schema
+    from felis import Schema, Table, Column
 except ImportError:
     _has_felis = False
 
@@ -53,9 +53,8 @@ def get(source, item):
 
     Returns
     -------
-    :class:`dict`
-        A dictionary containing the metadata. The dictionary can then be
-        JSON-encoded.
+    :class:`~felis.datamodel.Schema` or :class:`~felis.datamodel.Table` or :class:`~felis.datamodel.Column`
+        A Felis ``datamodel`` object containing the metadata.
 
     Raises
     ------
@@ -91,8 +90,25 @@ def get(source, item):
         # Treat source as a file.
         #
         if _has_felis:  # pragma: no cover
-            return Schema.from_uri(source)
-            # >>> c = Column(name='foo', id='foo', datatype='long')
+            felis_schema = Schema.from_uri(source)
+            if table is None and column is None:
+                return felis_schema
+            if len(felis_schema.tables) == 0:
+                warnings.warn(f"Schema '{schema}' has no tables.", UserWarning)
+                return felis_schema
+            table_search = [i for i, t in enumerate(felis_schema.tables) if t.name == table]
+            if len(table_search) != 1:
+                raise ValueError(f"Could not find a table matching '{table}' in schema '{schema}'.")
+            found_table = felis_schema.tables[table_search[0]]
+            if column is None:
+                if len(found_table.columns) == 0:
+                    # A schema without tables is possible, but a table without columns is weird.
+                    warnings.warn(f"Table '{schema}.{table}' has no columns. This is unusual.", UserWarning)
+                return found_table
+            column_search = [i for i, c in enumerate(found_table.columns) if c.name == column]
+            if len(column_search) != 1:
+                raise ValueError(f"Could not find a column matching '{column}' in table '{schema}.{table}'.")
+            return found_table.columns[column_search[0]]
         else:
             return metadata
     else:
@@ -105,22 +121,23 @@ def get(source, item):
         #
         # Get schema information.
         #
-        schema_query = "SELECT * FROM information_schema.schemata WHERE schema_name = %s;"
+        schema_query = "SELECT catalog_name, schema_name FROM information_schema.schemata WHERE schema_name = %s;"
         schema_parameters = (schema,)
         cursor.execute(schema_query, schema_parameters)
         rows = cursor.fetchall()
         if len(rows) == 0:
             raise ValueError(f"Could not find a schema matching '{schema}'.")
+        felis_schema = Schema(name=schema, id=schema, tables=[])
         metadata['schema'] = dict(zip([d[0] for d in cursor.description], rows[0]))
         #
         # Get table information.
         #
         if table is None:
             # Find all tables in schema.
-            table_query = "SELECT * FROM information_schema.tables WHERE table_schema = %s;"
+            table_query = "SELECT table_catalog, table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema = %s;"
             table_parameters = (schema,)
         else:
-            table_query = "SELECT * FROM information_schema.tables WHERE table_schema = %s AND table_name = %s;"
+            table_query = "SELECT table_catalog, table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema = %s AND table_name = %s;"
             table_parameters = (schema, table)
         cursor.execute(table_query, table_parameters)
         rows = cursor.fetchall()
@@ -133,17 +150,19 @@ def get(source, item):
                 raise ValueError(f"Could not find a table matching '{table}' in schema '{schema}'.")
         metadata['table'] = list()
         for row in rows:
+            felis_schema.tables.append(Table(name=row[2], id=f"{schema}.{row[2]}", columns=[]))
             metadata['table'].append(dict(zip([d[0] for d in cursor.description], row)))
         #
         # Get column information.
         #
         for t in metadata['table']:
+            felis_table_index = [i for i, ft in enumerate(felis_schema.tables) if ft.name == t['table_name']][0]
             if column is None:
-                column_query = ("SELECT * FROM information_schema.columns WHERE " +
+                column_query = ("SELECT table_catalog, table_schema, table_name, column_name, data_type FROM information_schema.columns WHERE " +
                                 "table_schema = %s AND table_name = %s;")
                 column_parameters = (t['table_schema'], t['table_name'])
             else:
-                column_query = ("SELECT * FROM information_schema.columns WHERE " +
+                column_query = ("SELECT table_catalog, table_schema, table_name, column_name, data_type FROM information_schema.columns WHERE " +
                                 "table_schema = %s AND table_name = %s AND column_name = %s;")
                 column_parameters = (t['table_schema'], t['table_name'], column)
             cursor.execute(column_query, column_parameters)
@@ -158,6 +177,7 @@ def get(source, item):
             if metadata['column'] is None or metadata['column'] == column:
                 metadata['column'] = list()
             for row in rows:
+                felis_schema.tables[felis_table_index].columns.append(Column(name=row[3], id=f"{schema}.{table}.{row[3]}", datatype=None))
                 metadata['column'].append(dict(zip([d[0] for d in cursor.description], row)))
         conn.close()
     return metadata

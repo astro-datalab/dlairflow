@@ -111,35 +111,35 @@ class MockHook(MockConnection):
 def temporary_felis_file(tmp_path_factory):
     """Create a temporary felis file.
     """
-    data = """name: temporary_schema
+    data = """name: name1
 description: "This is a test."
-"@id": temporary_schema
+"@id": name1
 
 tables:
-    - name: table1
-      description: "table1 in temporary_schema"
-      "@id": temporary_schema.table1
+    - name: name2
+      description: "name2 in name1"
+      "@id": name1.name2
       columns:
           - name: id1
             datatype: "long"
             description: "Unique identifier"
-            "@id": temporary_schema.table1.id1
-          - name: data1
+            "@id": name1.name2.id1
+          - name: name3
             datatype: "float"
             description: "Real data"
-            "@id": temporary_schema.table1.data1
+            "@id": name1.name2.name3
     - name: table2
       description: "table2 in temporary_schema"
-      "@id": temporary_schema.table2
+      "@id": name1.table2
       columns:
           - name: id2
             datatype: "long"
             description: "Unique identifier"
-            "@id": temporary_schema.table1.id2
+            "@id": name1.table2.id2
           - name: data2
             datatype: "double"
             description: "Double data"
-            "@id": temporary_schema.table1.data2
+            "@id": name1.table2.data2
 """
     filename = tmp_path_factory.mktemp('felis') / 'felis.yaml'
     with open(filename, 'w') as FELIS:
