@@ -24,17 +24,17 @@ jobs:
                     - os: ubuntu-latest
                       coverage: false
                       python-version: '3.12'
-                      airflow-version: '<3.0'
-                      airflow-postgres-version: '<6.0'
+                      airflow-version: '<3.1'
+                      airflow-postgres-version: '<7.0'
                     - os: ubuntu-latest
                       coverage: false
                       python-version: '3.11'
-                      airflow-version: '<2.11'
+                      airflow-version: '<3.0'
                       airflow-postgres-version: '<6.0'
                     - os: ubuntu-latest
                       coverage: true
                       python-version: '3.10'
-                      airflow-version: '<2.10'
+                      airflow-version: '<2.11'
                       airflow-postgres-version: '<6.0'
 
         steps:
