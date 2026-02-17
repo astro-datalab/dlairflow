@@ -134,10 +134,12 @@ def get(source, item):
         #
         if table is None:
             # Find all tables in schema.
-            table_query = "SELECT table_catalog, table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema = %s;"
+            table_query = ("SELECT table_catalog, table_schema, table_name, table_type " +
+                           "FROM information_schema.tables WHERE table_schema = %s;")
             table_parameters = (schema,)
         else:
-            table_query = "SELECT table_catalog, table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema = %s AND table_name = %s;"
+            table_query = ("SELECT table_catalog, table_schema, table_name, table_type " +
+                           "FROM information_schema.tables WHERE table_schema = %s AND table_name = %s;")
             table_parameters = (schema, table)
         cursor.execute(table_query, table_parameters)
         rows = cursor.fetchall()
@@ -158,12 +160,14 @@ def get(source, item):
         for t in metadata['table']:
             felis_table_index = [i for i, ft in enumerate(felis_schema.tables) if ft.name == t['table_name']][0]
             if column is None:
-                column_query = ("SELECT table_catalog, table_schema, table_name, column_name, data_type FROM information_schema.columns WHERE " +
-                                "table_schema = %s AND table_name = %s;")
+                column_query = ("SELECT table_catalog, table_schema, table_name, column_name, data_type " +
+                                "FROM information_schema.columns " +
+                                "WHERE table_schema = %s AND table_name = %s;")
                 column_parameters = (t['table_schema'], t['table_name'])
             else:
-                column_query = ("SELECT table_catalog, table_schema, table_name, column_name, data_type FROM information_schema.columns WHERE " +
-                                "table_schema = %s AND table_name = %s AND column_name = %s;")
+                column_query = ("SELECT table_catalog, table_schema, table_name, column_name, data_type " +
+                                "FROM information_schema.columns " +
+                                "WHERE table_schema = %s AND table_name = %s AND column_name = %s;")
                 column_parameters = (t['table_schema'], t['table_name'], column)
             cursor.execute(column_query, column_parameters)
             rows = cursor.fetchall()
@@ -177,7 +181,9 @@ def get(source, item):
             if metadata['column'] is None or metadata['column'] == column:
                 metadata['column'] = list()
             for row in rows:
-                felis_schema.tables[felis_table_index].columns.append(Column(name=row[3], id=f"{schema}.{table}.{row[3]}", datatype=None))
+                # Map data types back to felis.
+                felis_column = Column(name=row[3], id=f"{schema}.{table}.{row[3]}", datatype=None)
+                felis_schema.tables[felis_table_index].columns.append(felis_column)
                 metadata['column'].append(dict(zip([d[0] for d in cursor.description], row)))
         conn.close()
     return metadata
