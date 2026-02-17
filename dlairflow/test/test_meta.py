@@ -129,15 +129,15 @@ tables:
             description: "Real data"
             "@id": name1.name2.name3
     - name: table2
-      description: "table2 in temporary_schema"
+      description: "table2 in name1"
       "@id": name1.table2
       columns:
           - name: id2
-            datatype: "long"
+            datatype: long
             description: "Unique identifier"
             "@id": name1.table2.id2
           - name: data2
-            datatype: "double"
+            datatype: double
             description: "Double data"
             "@id": name1.table2.data2
 """
