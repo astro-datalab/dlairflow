@@ -207,8 +207,9 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
     #     from airflow.providers.standard.operators.bash import BashOperator
     # except ImportError:
     #     from airflow.operators.bash import BashOperator
-    # if test_source == 'felis.yaml' and not has_felis:
-    #     pytest.skip("Felis is not installed in the environment.")
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+
 
     p = import_module('..meta', package='dlairflow.test')
 
@@ -220,7 +221,7 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
             with pytest.raises(ValueError) as excinfo:
                 meta = get(source, item)
             assert excinfo.value.args[0] == f"Could not split string '{item}' into schema, table, etc."
-        elif has_felis:
+        else:
             meta = get(source, item)
             if 'name3' in item:
                 assert isinstance(meta, Column)
@@ -234,8 +235,6 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
                 assert isinstance(meta, Schema)
                 assert meta.name == 'name1'
                 assert meta.id == 'name1'
-        else:
-            pass
     else:
         source = test_source
         if item == 'no_such_schema':

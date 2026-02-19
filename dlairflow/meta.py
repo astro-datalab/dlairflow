@@ -101,28 +101,25 @@ def get(source, item):
         #
         # Treat source as a file.
         #
-        if _has_felis:
-            felis_schema = Schema.from_uri(source)
-            if table is None and column is None:
-                return felis_schema
-            if len(felis_schema.tables) == 0:
-                warnings.warn(f"Schema '{schema}' has no tables.", UserWarning)
-                return felis_schema
-            table_search = [i for i, t in enumerate(felis_schema.tables) if t.name == table]
-            if len(table_search) != 1:
-                raise ValueError(f"Could not find a table matching '{table}' in schema '{schema}'.")
-            found_table = felis_schema.tables[table_search[0]]
-            if column is None:
-                if len(found_table.columns) == 0:
-                    # A schema without tables is possible, but a table without columns is weird.
-                    warnings.warn(f"Table '{schema}.{table}' has no columns. This is unusual.", UserWarning)
-                return found_table
-            column_search = [i for i, c in enumerate(found_table.columns) if c.name == column]
-            if len(column_search) != 1:
-                raise ValueError(f"Could not find a column matching '{column}' in table '{schema}.{table}'.")
-            return found_table.columns[column_search[0]]
-        else:  # pragma: no cover
-            return None
+        felis_schema = Schema.from_uri(source)
+        if table is None and column is None:
+            return felis_schema
+        if len(felis_schema.tables) == 0:
+            warnings.warn(f"Schema '{schema}' has no tables.", UserWarning)
+            return felis_schema
+        table_search = [i for i, t in enumerate(felis_schema.tables) if t.name == table]
+        if len(table_search) != 1:
+            raise ValueError(f"Could not find a table matching '{table}' in schema '{schema}'.")
+        found_table = felis_schema.tables[table_search[0]]
+        if column is None:
+            if len(found_table.columns) == 0:
+                # A schema without tables is possible, but a table without columns is weird.
+                warnings.warn(f"Table '{schema}.{table}' has no columns. This is unusual.", UserWarning)
+            return found_table
+        column_search = [i for i, c in enumerate(found_table.columns) if c.name == column]
+        if len(column_search) != 1:
+            raise ValueError(f"Could not find a column matching '{column}' in table '{schema}.{table}'.")
+        return found_table.columns[column_search[0]]
     else:
         #
         # Treat source as a database connection ID.
