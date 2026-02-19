@@ -20,6 +20,19 @@ except ImportError:
     _has_felis = False
 
 
+_postgresql_to_felis = {'double precision': 'double',
+                        'real': 'float',
+                        'bigint': 'long',
+                        'integer': 'int',
+                        'smallint': 'short',
+                        'boolean': 'boolean',
+                        'timestamp with time zone': 'timestamp',
+                        'timestamp without time zone': 'timestamp',
+                        'character': 'char',
+                        'character varying': 'string',
+                        'text': 'text'}
+
+
 def fitsverify(filename):
     """Run :command:`fitsverify` on `filename`.
 
@@ -84,12 +97,11 @@ def get(source, item):
         column = None
     if items:
         raise ValueError(f"Could not split string '{item}' into schema, table, etc.")
-    metadata = {'schema': schema, 'table': table, 'column': column}
     if os.path.isfile(source):
         #
         # Treat source as a file.
         #
-        if _has_felis:  # pragma: no cover
+        if _has_felis:
             felis_schema = Schema.from_uri(source)
             if table is None and column is None:
                 return felis_schema
@@ -109,8 +121,8 @@ def get(source, item):
             if len(column_search) != 1:
                 raise ValueError(f"Could not find a column matching '{column}' in table '{schema}.{table}'.")
             return found_table.columns[column_search[0]]
-        else:
-            return metadata
+        else:  # pragma: no cover
+            return None
     else:
         #
         # Treat source as a database connection ID.
@@ -126,9 +138,9 @@ def get(source, item):
         cursor.execute(schema_query, schema_parameters)
         rows = cursor.fetchall()
         if len(rows) == 0:
+            conn.close()
             raise ValueError(f"Could not find a schema matching '{schema}'.")
         felis_schema = Schema(name=schema, id=schema, tables=[])
-        metadata['schema'] = dict(zip([d[0] for d in cursor.description], rows[0]))
         #
         # Get table information.
         #
@@ -144,46 +156,57 @@ def get(source, item):
         cursor.execute(table_query, table_parameters)
         rows = cursor.fetchall()
         if len(rows) == 0:
+            conn.close()
             if table is None:
                 warnings.warn(f"Schema '{schema}' has no tables.", UserWarning)
-                return metadata
+                return felis_schema
             else:
                 # Table isn't there, this is more serious.
                 raise ValueError(f"Could not find a table matching '{table}' in schema '{schema}'.")
-        metadata['table'] = list()
         for row in rows:
             felis_schema.tables.append(Table(name=row[2], id=f"{schema}.{row[2]}", columns=[]))
-            metadata['table'].append(dict(zip([d[0] for d in cursor.description], row)))
         #
         # Get column information.
         #
-        for t in metadata['table']:
-            felis_table_index = [i for i, ft in enumerate(felis_schema.tables) if ft.name == t['table_name']][0]
+        for t in felis_schema.tables:
+            # felis_table_index = [i for i, ft in enumerate(felis_schema.tables) if ft.name == t.name][0]
             if column is None:
                 column_query = ("SELECT table_catalog, table_schema, table_name, column_name, data_type " +
                                 "FROM information_schema.columns " +
                                 "WHERE table_schema = %s AND table_name = %s;")
-                column_parameters = (t['table_schema'], t['table_name'])
+                column_parameters = (schema, t.name)
             else:
                 column_query = ("SELECT table_catalog, table_schema, table_name, column_name, data_type " +
                                 "FROM information_schema.columns " +
                                 "WHERE table_schema = %s AND table_name = %s AND column_name = %s;")
-                column_parameters = (t['table_schema'], t['table_name'], column)
+                column_parameters = (schema, t.name, column)
             cursor.execute(column_query, column_parameters)
             rows = cursor.fetchall()
             if len(rows) == 0:
+                conn.close()
                 if column is None:
                     # A schema without tables is possible, but a table without columns is weird.
                     warnings.warn(f"Table '{schema}.{table}' has no columns. This is unusual.", UserWarning)
-                    return metadata
+                    return t
                 else:
                     raise ValueError(f"Could not find a column matching '{column}' in table '{schema}.{table}'.")
-            if metadata['column'] is None or metadata['column'] == column:
-                metadata['column'] = list()
             for row in rows:
                 # Map data types back to felis.
-                felis_column = Column(name=row[3], id=f"{schema}.{table}.{row[3]}", datatype=None)
-                felis_schema.tables[felis_table_index].columns.append(felis_column)
-                metadata['column'].append(dict(zip([d[0] for d in cursor.description], row)))
+                try:
+                    felis_data_type = _postgresql_to_felis[row[4]]
+                except KeyError:
+                    warnings.warn(f"Column '{column}' in table '{schema}.{table}' has type '{row[4]}' which does not correspond to any felis type; using 'text'.", UserWarning)
+                    felis_data_type = 'text'
+                felis_column = Column(name=row[3], id=f"{schema}.{table}.{row[3]}", datatype=felis_data_type)
+                t.columns.append(felis_column)
+        #
+        # Figure out what to return
+        #
         conn.close()
-    return metadata
+        if column is not None:
+            # There should be only one table and one column.
+            return felis_schema.tables[0].columns[0]
+        if table is not None:
+            # There should be only one table.
+            return felis_schema.tables[0]
+        return felis_schema
