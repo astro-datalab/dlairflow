@@ -192,7 +192,9 @@ def get(source, item):
                 try:
                     felis_data_type = _postgresql_to_felis[row[4]]
                 except KeyError:
-                    warnings.warn(f"Column '{column}' in table '{schema}.{table}' has type '{row[4]}' which does not correspond to any felis type; using 'text'.", UserWarning)
+                    warnings.warn(f"Column '{column}' in table '{schema}.{table}' " +
+                                  f"has type '{row[4]}' which does not correspond " +
+                                  "to any felis type; using 'text'.", UserWarning)
                     felis_data_type = 'text'
                 felis_column = Column(name=row[3], id=f"{schema}.{table}.{row[3]}", datatype=felis_data_type)
                 t.columns.append(felis_column)

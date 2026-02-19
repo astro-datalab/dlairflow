@@ -64,9 +64,12 @@ class MockCursor(object):
                 if self.last_parameters[1] == 'has_no_columns':
                     return []
                 else:
-                    return [(self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'name1', 'bigint'),
-                            (self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'name2', 'integer'),
-                            (self.hook.schema, self.last_parameters[0], self.last_parameters[1], 'name3', 'real')]
+                    return [(self.hook.schema, self.last_parameters[0],
+                             self.last_parameters[1], 'name1', 'bigint'),
+                            (self.hook.schema, self.last_parameters[0],
+                             self.last_parameters[1], 'name2', 'integer'),
+                            (self.hook.schema, self.last_parameters[0],
+                             self.last_parameters[1], 'name3', 'real')]
         else:
             pass
 
@@ -158,7 +161,7 @@ tables:
 
 @pytest.fixture(scope="function")
 def temporary_felis_file_empty_schema(tmp_path_factory):
-    """Create a temporary felis file.
+    """Create a temporary felis file with no tables.
     """
     data = """name: name1
 description: "This is a test."
@@ -166,6 +169,26 @@ description: "This is a test."
 tables: []
 """
     filename = tmp_path_factory.mktemp('felis') / 'felis_empty_schema.yaml'
+    with open(filename, 'w') as FELIS:
+        FELIS.write(data)
+    yield filename
+    os.remove(filename)
+
+
+@pytest.fixture(scope="function")
+def temporary_felis_file_no_columns(tmp_path_factory):
+    """Create a temporary felis file with a table that has no columns.
+    """
+    data = """name: name1
+description: "This is a test."
+"@id": name1
+tables:
+    - name: name2
+      description: "name2 in name1"
+      "@id": name1.name2
+      columns: []
+"""
+    filename = tmp_path_factory.mktemp('felis') / 'felis_no_columns.yaml'
     with open(filename, 'w') as FELIS:
         FELIS.write(data)
     yield filename
@@ -207,6 +230,7 @@ def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F
                                               ('felis.yaml', 'name1.name2.name3'),
                                               ('felis.yaml', 'name1.name2.name3.name4'),
                                               ('felis_empty_schema.yaml', 'name1.name2'),
+                                              ('felis_no_columns.yaml', 'name1.name2'),
                                               ('login,password,host,database', 'no_such_schema'),
                                               ('login,password,host,database', 'name1'),
                                               ('login,password,host,database', 'has_no_tables'),
@@ -216,8 +240,9 @@ def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F
                                               ('login,password,host,database', 'name1.name2.no_such_column'),
                                               ('login,password,host,database', 'name1.name2.unknown_type'),
                                               ('login,password,host,database', 'name1.name2.name3'),])
-def test_get(temporary_airflow_home, temporary_felis_file,
-             temporary_felis_file_empty_schema, mock_postgres, test_source, item):  # noqa: F811
+def test_get(temporary_airflow_home, temporary_felis_file,  # noqa: F811
+             temporary_felis_file_empty_schema, temporary_felis_file_no_columns,
+             mock_postgres, test_source, item):
     """Test the get function.
     """
     #
@@ -229,7 +254,6 @@ def test_get(temporary_airflow_home, temporary_felis_file,
     #     from airflow.operators.bash import BashOperator
     if not has_felis:
         pytest.skip("Felis is not installed in the environment.")
-
 
     p = import_module('..meta', package='dlairflow.test')
 
@@ -272,6 +296,14 @@ def test_get(temporary_airflow_home, temporary_felis_file,
         assert len(meta.tables) == 0
         assert len(warninfo) == 1
         assert warninfo[0].message.args[0] == "Schema 'name1' has no tables."
+    elif test_source == 'felis_no_columns.yaml':
+        source = temporary_felis_file_no_columns
+        with pytest.warns(UserWarning) as warninfo:
+            meta = get(source, item)
+        assert isinstance(meta, Table)
+        assert len(meta.columns) == 0
+        assert len(warninfo) == 1
+        assert warninfo[0].message.args[0] == "Table 'name1.name2' has no columns. This is unusual."
     else:
         source = test_source
         if item == 'no_such_schema':
