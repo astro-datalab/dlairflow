@@ -156,6 +156,22 @@ tables:
     os.remove(filename)
 
 
+@pytest.fixture(scope="function")
+def temporary_felis_file_empty_schema(tmp_path_factory):
+    """Create a temporary felis file.
+    """
+    data = """name: name1
+description: "This is a test."
+"@id": name1
+tables: []
+"""
+    filename = tmp_path_factory.mktemp('felis') / 'felis_empty_schema.yaml'
+    with open(filename, 'w') as FELIS:
+        FELIS.write(data)
+    yield filename
+    os.remove(filename)
+
+
 @pytest.fixture
 def mock_postgres(monkeypatch):
     """Configure a mock class to intercept database calls.
@@ -185,9 +201,12 @@ def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F
 
 
 @pytest.mark.parametrize('test_source,item', [('felis.yaml', 'name1'),
+                                              ('felis.yaml', 'name1.no_such_table'),
                                               ('felis.yaml', 'name1.name2'),
+                                              ('felis.yaml', 'name1.name2.no_such_column'),
                                               ('felis.yaml', 'name1.name2.name3'),
                                               ('felis.yaml', 'name1.name2.name3.name4'),
+                                              ('felis_empty_schema.yaml', 'name1.name2'),
                                               ('login,password,host,database', 'no_such_schema'),
                                               ('login,password,host,database', 'name1'),
                                               ('login,password,host,database', 'has_no_tables'),
@@ -197,7 +216,8 @@ def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F
                                               ('login,password,host,database', 'name1.name2.no_such_column'),
                                               ('login,password,host,database', 'name1.name2.unknown_type'),
                                               ('login,password,host,database', 'name1.name2.name3'),])
-def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_source, item):  # noqa: F811
+def test_get(temporary_airflow_home, temporary_felis_file,
+             temporary_felis_file_empty_schema, mock_postgres, test_source, item):  # noqa: F811
     """Test the get function.
     """
     #
@@ -221,6 +241,15 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
             with pytest.raises(ValueError) as excinfo:
                 meta = get(source, item)
             assert excinfo.value.args[0] == f"Could not split string '{item}' into schema, table, etc."
+        elif item == 'name1.no_such_table':
+            with pytest.raises(ValueError) as excinfo:
+                meta = get(source, item)
+            assert excinfo.value.args[0] == "Could not find a table matching 'no_such_table' in schema 'name1'."
+        elif item == 'name1.name2.no_such_column':
+            with pytest.raises(ValueError) as excinfo:
+                meta = get(source, item)
+            assert excinfo.value.args[0] == ("Could not find a column matching " +
+                                             "'no_such_column' in table 'name1.name2'.")
         else:
             meta = get(source, item)
             if 'name3' in item:
@@ -235,6 +264,14 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
                 assert isinstance(meta, Schema)
                 assert meta.name == 'name1'
                 assert meta.id == 'name1'
+    elif test_source == 'felis_empty_schema.yaml':
+        source = temporary_felis_file_empty_schema
+        with pytest.warns(UserWarning) as warninfo:
+            meta = get(source, item)
+        assert isinstance(meta, Schema)
+        assert len(meta.tables) == 0
+        assert len(warninfo) == 1
+        assert warninfo[0].message.args[0] == "Schema 'name1' has no tables."
     else:
         source = test_source
         if item == 'no_such_schema':
@@ -251,7 +288,6 @@ def test_get(temporary_airflow_home, temporary_felis_file, mock_postgres, test_s
         elif item == 'name1.no_such_table':
             with pytest.raises(ValueError) as excinfo:
                 meta = get(source, item)
-            # assert meta['table'] is None
             assert excinfo.value.args[0] == "Could not find a table matching 'no_such_table' in schema 'name1'."
         elif item == 'name1.name2':
             meta = get(source, item)
