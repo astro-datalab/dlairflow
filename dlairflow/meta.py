@@ -85,18 +85,10 @@ def get(source, item):
     name1.name2.name3
         The metadata associated with column 'name3' in table 'name2' in schema 'name1' will be extracted.
     """
-    items = item.split('.')
-    schema = items.pop(0)
-    try:
-        table = items.pop(0)
-    except IndexError:
-        table = None
-    try:
-        column = items.pop(0)
-    except IndexError:
-        column = None
-    if items:
+    parts = item.split('.', maxsplit=3)
+    if len(parts) > 3:
         raise ValueError(f"Could not split string '{item}' into schema, table, etc.")
+    schema, table, column = [*parts, None, None, None][:3]
     if os.path.isfile(source):
         #
         # Treat source as a file.
