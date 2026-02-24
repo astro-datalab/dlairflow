@@ -39,7 +39,7 @@ def load_table_with_fits2db(connection, schema, table, load_dir):
 
     Returns
     -------
-    :class:`~airflow.operators.bash.BashOperator`
+    :class:`~airflow.providers.standard.operators.bash.BashOperator`
         A BashOperator that will execute :command:`fits2db`.
     """
     load_table_template = ("fits2db -t {{ params.schema }}.{{ params.table }} " +

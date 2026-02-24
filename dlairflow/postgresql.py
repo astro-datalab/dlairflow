@@ -38,7 +38,7 @@ def _connection_to_environment(connection):
     -------
     :class:`dict`
         A dictionary suitable for passing to the ``env`` keyword on, *e.g.*
-        :class:`~airflow.operators.bash.BashOperator`.
+        :class:`~airflow.providers.standard.operators.bash.BashOperator`.
     """
     conn = BaseHook.get_connection(connection)
     env = {'PGUSER': conn.login,
@@ -72,7 +72,7 @@ def pg_dump_schema(connection, schema, dump_dir):
 
     Returns
     -------
-    :class:`~airflow.operators.bash.BashOperator`
+    :class:`~airflow.providers.standard.operators.bash.BashOperator`
         A BashOperator that will execute :command:`pg_dump`.
     """
     pg_env = _connection_to_environment(connection)
@@ -100,7 +100,7 @@ def pg_restore_schema(connection, schema, dump_dir):
 
     Returns
     -------
-    :class:`~airflow.operators.bash.BashOperator`
+    :class:`~airflow.providers.standard.operators.bash.BashOperator`
         A BashOperator that will execute :command:`pg_restore`.
     """
     pg_env = _connection_to_environment(connection)
@@ -136,7 +136,7 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec',
 
     Returns
     -------
-    :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+    :class:`~airflow.providers.common.sql.operators.sql.SQLExecuteQueryOperator`
         A task to create a q3c index.
     """
     sql_dir = ensure_sql()
@@ -183,7 +183,7 @@ def index_columns(connection, schema, table, columns, tablespace=None, overwrite
 
     Returns
     -------
-    :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+    :class:`~airflow.providers.common.sql.operators.sql.SQLExecuteQueryOperator`
         A task to create several indexes.
 
     Notes
@@ -253,7 +253,7 @@ def primary_key(connection, schema, primary_keys, tablespace=None, overwrite=Fal
 
     Returns
     -------
-    :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+    :class:`~airflow.providers.common.sql.operators.sql.SQLExecuteQueryOperator`
         A task to create a primary key.
 
     Notes
@@ -320,12 +320,12 @@ def truncate_table(connection, schema, table, restart=False, cascade=False,
 
     Returns
     -------
-    :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+    :class:`~airflow.providers.common.sql.operators.sql.SQLExecuteQueryOperator`
         A task to run a ``TRUNCATE TABLE`` command.
 
     Raises
     ------
-    ValueError
+    :exc:`ValueError`
         If `table` is not a string or list-like object.
 
     """
@@ -378,17 +378,17 @@ def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
 
     Returns
     -------
-    :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+    :class:`~airflow.providers.common.sql.operators.sql.SQLExecuteQueryOperator`
         A task to run a ``VACUUM`` command.
 
     Raises
     ------
-    ValueError
+    :exc:`ValueError`
         If `table` is not a string or list-like object.
 
     Notes
     -----
-    The returned :class:`~airflow.providers.postgres.operators.postgres.PostgresOperator`
+    The returned :class:`~airflow.providers.common.sql.operators.sql.SQLExecuteQueryOperator`
     has `autocommit=True` set, which inhibits execution of SQL commands in a
     transaction block. Normally a transaction block is a good thing, but ``VACUUM``
     cannot be run in a transaction block.

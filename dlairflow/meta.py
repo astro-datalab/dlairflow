@@ -43,7 +43,7 @@ def fitsverify(filename):
 
     Returns
     -------
-    :class:`~airflow.operators.bash.BashOperator`
+    :class:`~airflow.providers.standard.operators.bash.BashOperator`
         A BashOperator that will execute :command:`fitsverify`.
     """
     fitsverify_template = "fitsverify -l {{params.filename}}"
@@ -71,7 +71,7 @@ def get(source, item):
 
     Raises
     ------
-    ValueError
+    :exc:`ValueError`
         If `item` does not match the expected format.
 
     Notes
