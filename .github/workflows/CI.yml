@@ -17,66 +17,49 @@ jobs:
             matrix:
                 include:
                     - os: ubuntu-latest
+                      coverage: true
+                      python-version: '3.13'
+                      airflow-version: '<4.0'
+                      airflow-postgres-version: '<7.0'
+                    - os: ubuntu-latest
+                      coverage: false
                       python-version: '3.12'
                       airflow-version: '<3.1'
                       airflow-postgres-version: '<7.0'
                     - os: ubuntu-latest
-                      python-version: '3.12'
-                      airflow-version: '<2.11'
-                      airflow-postgres-version: '<7.0'
-                    - os: ubuntu-latest
-                      python-version: '3.10'
-                      airflow-version: '<2.10'
+                      coverage: false
+                      python-version: '3.11'
+                      airflow-version: '<3.0'
                       airflow-postgres-version: '<6.0'
-                    # Currently redundant with the coverage test below
-                    # - os: ubuntu-latest
-                    #   python-version: '3.9'
-                    #   airflow-version: '<2.10'
-                    #   airflow-postgres-version: '<6.0'
+                    - os: ubuntu-latest
+                      coverage: false
+                      python-version: '3.10'
+                      airflow-version: '<2.11'
+                      airflow-postgres-version: '<6.0'
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
             - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v5
-              with:
-                python-version: ${{ matrix.python-version }}
-            - name: Install Python dependencies
-              run: |
-                python -m pip install --upgrade pip setuptools wheel
-                python -m pip install pytest
-                python -m pip install "apache-airflow${{ matrix.airflow-version }}" "apache-airflow-providers-postgres${{ matrix.airflow-postgres-version }}"
-            - name: Run the test
-              run: pytest
-
-    coverage:
-        name: Test coverage
-        runs-on: ${{ matrix.os }}
-        strategy:
-            fail-fast: false
-            matrix:
-                os: [ubuntu-latest]
-                python-version: ['3.9']
-                airflow-version: ['<2.10']
-
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-            - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v6
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
               run: |
                 python -m pip install --upgrade pip setuptools wheel
                 python -m pip install pytest pytest-cov coveralls
-                python -m pip install "apache-airflow${{ matrix.airflow-version }}" "apache-airflow-providers-postgres<6.0"
+                python -m pip install "apache-airflow${{ matrix.airflow-version }}" "apache-airflow-providers-postgres${{ matrix.airflow-postgres-version }}"
+            - name: Optionally install felis
+              if: ${{ matrix.airflow-version == '<4.0' || matrix.airflow-version == '<3.1'}}
+              run: python -m pip install lsst-felis
+            - name: Run the test
+              if: ${{ !fromJSON(matrix.coverage) }}
+              run: pytest
             - name: Run the test with coverage
+              if: ${{ fromJSON(matrix.coverage) }}
               run: pytest --cov
             - name: Coveralls
-              # uses: coverallsapp/github-action@v1.1.2
-              # with:
-              #     github-token: ${{ secrets.GITHUB_TOKEN }}
+              if: ${{ fromJSON(matrix.coverage) }}
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                 COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
@@ -89,13 +72,13 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest]
-                python-version: ['3.10']
+                python-version: ['3.13']
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
             - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v6
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
@@ -110,13 +93,13 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest]
-                python-version: ['3.10']
+                python-version: ['3.13']
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
             - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v6
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies

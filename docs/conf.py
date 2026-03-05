@@ -25,6 +25,7 @@ release = package.__version__
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
+    'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'sphinx.ext.todo',
@@ -67,7 +68,8 @@ html_theme = 'sphinx_rtd_theme'
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
-    'airflow': ('https://airflow.apache.org/docs/apache-airflow/stable/', None)
+    'airflow': ('https://airflow.apache.org/docs/apache-airflow/stable/', None),
+    'felis': ('https://felis.lsst.io/', None)
 }
 
 # -- Options for todo extension ----------------------------------------------

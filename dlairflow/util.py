@@ -29,9 +29,9 @@ def user_scratch(user_key):
 
     Raises
     ------
-    KeyError
+    :exc:`KeyError`
         If :envvar:`DLAIRFLOW_SCRATCH_ROOT` is not set.
-    ValueError
+    :exc:`ValueError`
         If :envvar:`DLAIRFLOW_SCRATCH_ROOT` is set but *empty*.
     """
     root = os.environ['DLAIRFLOW_SCRATCH_ROOT']
@@ -50,7 +50,7 @@ def ensure_sql():
 
     Raises
     ------
-    KeyError
+    :exc:`KeyError`
         If :envvar:`AIRFLOW_HOME` is not defined.
     """
     sql_dir = os.path.join(os.environ['AIRFLOW_HOME'], 'dags', 'sql')

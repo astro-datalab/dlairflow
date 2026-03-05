@@ -27,6 +27,12 @@ Apache Airflow
 This package is intended to work with `Apache Airflow®`_. If you install ``dlairflow``
 with :command:`pip`, it should install Airflow for you.
 
+Felis
+~~~~~
+
+This package is intended to work with `Felis`_. If you install ``dlairflow`` with
+:command:`pip`, it should install Felis for you.
+
 fits2db
 ~~~~~~~
 
@@ -36,13 +42,6 @@ development libraries for PostgreSQL_, MySQL_ and SQLite_, and the cfitsio_ libr
 See the README_ file for compile instructions. Once compiled, ensure that
 :command:`fits2db` is present in :envvar:`PATH`.
 
-.. _FITS: https://heasarc.gsfc.nasa.gov/docs/heasarc/fits.html
-.. _fits2db: https://github.com/astro-datalab/fits2db
-.. _cfitsio: https://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html
-.. _PostgreSQL: https://www.postgresql.org
-.. _MySQL: https://www.mysql.com
-.. _SQLite: https://www.sqlite.org/index.html
-.. _README: https://github.com/astro-datalab/fits2db/blob/master/README.md
 
 PostgreSQL
 ~~~~~~~~~~
@@ -74,3 +73,37 @@ Scratch space
 
 Some ``dlairflow`` functions and returned task will need to create intermediate
 files. We refer to this as "scratch" space.
+
+Optional packages
+-----------------
+
+fitsverify
+~~~~~~~~~~
+
+fitsverify_ checks FITS_ files for compliance with the `FITS Standard`_.
+:command:`fitsverify` requires a C compiler and the cfitsio_ library.
+Once compiled, ensure that :command:`fitsverify` is present in :envvar:`PATH`.
+
+Environment Variables
+---------------------
+
+.. envvar:: DLAIRFLOW_SCRATCH_ROOT
+
+   Used to specify per-user scratch space. See :func:`dlairflow.util.user_scratch`
+   for further details.
+
+.. envvar:: PATH
+
+   This is the standard shell ``PATH`` variable. Several command-line utilities
+   used by ``dlairflow`` need to be in ``PATH``, see above.
+
+.. _Felis: https://felis.lsst.io
+.. _FITS: https://heasarc.gsfc.nasa.gov/docs/heasarc/fits.html
+.. _`FITS Standard`: https://fits.gsfc.nasa.gov/fits_standard.html
+.. _fitsverify: https://heasarc.gsfc.nasa.gov/docs/software/ftools/fitsverify/
+.. _fits2db: https://github.com/astro-datalab/fits2db
+.. _cfitsio: https://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html
+.. _PostgreSQL: https://www.postgresql.org
+.. _MySQL: https://www.mysql.com
+.. _SQLite: https://www.sqlite.org/index.html
+.. _README: https://github.com/astro-datalab/fits2db/blob/master/README.md
