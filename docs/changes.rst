@@ -2,7 +2,7 @@
 dlairflow Change Log
 ====================
 
-0.1.7 (unreleased)
+0.1.7 (2026-03-05)
 ------------------
 
 * Add :mod:`dlairflow.meta` (PR `#17`_).
