@@ -5,7 +5,9 @@ dlairflow Change Log
 0.1.7 (unreleased)
 ------------------
 
-* No changes yet.
+* Add :mod:`dlairflow.meta` (PR `#17`_).
+
+.. _`#17`: https://github.com/astro-datalab/dlairflow/pull/17
 
 0.1.6 (2025-10-16)
 ------------------
