@@ -51,7 +51,7 @@ napoleon_include_private_with_doc = True
 
 # We don't necessarily need a full installation to build documentation.
 autodoc_mock_imports = []
-for missing in ('airflow', ):
+for missing in ('airflow', 'felis'):
     try:
         foo = import_module(missing)
     except ImportError:

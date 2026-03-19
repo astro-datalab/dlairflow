@@ -5,6 +5,53 @@ dlairflow.meta
 ==============
 
 Tasks that involve metadata, verification, etc.
+
+.. todo::
+
+    **Implement meta.validate_schema_file**
+
+    Validate Felis yaml file: is the file syntactically correct? The tests
+    (done by Felis calls) likely include: self-consistency, column datatypes and
+    UCDs have allowed values, etc. The command to use is likely:
+    :command:`felis validate [options] schema.yaml`. See also `Schema Validation`_.
+
+.. _`Schema Validation`: https://felis.lsst.io/user-guide/validation.html
+
+.. todo::
+
+    **Implement meta.validate_data_files**
+
+    Validate initial data against its Felis yaml file: are the data files and
+    the yaml file compatible? The calling signature should take both the path
+    of the Felis yaml file, and the path(s) of data file(s) that are presumably
+    described by the yaml file. For each data file, verify that its content
+    (*e.g.*, fields, dtypes, indices, etc.) is commensurate with the yaml file.
+    The function could either take a single data file path, or a list of such data
+    file paths.
+
+.. todo::
+
+    **Implement meta.validate_db_schema**
+
+    Validate DB schema contents against its Felis yaml file.
+    This could potentially use Felis' diff funtionality:
+    :command:`felis diff --engine-url sqlite:///test.db schema.yaml`
+    (see `Command Line Interface`_ )
+
+    Ensure that all of the following are true:
+
+    * All tables and columns as defined in the yaml file for a given schema are
+      present in the DB under that schema.
+    * No additional tables and column are present in the DB which aren't part
+      of the yaml schema file.
+    * All column datatypes in the DB correspond to the datatypes defined
+      in the yaml file.
+    * All columns in the TapSchema in the DB have a column description,
+      and that it is identical to the column descriptions in the yaml file.
+    * Ensure that for every column in the DB which has a UCD defined,
+      the UCD corresponds to the one defined for said column in the yaml file.
+
+.. _`Command Line Interface`: https://felis.lsst.io/user-guide/cli.html#felis-diff
 """
 import os
 import warnings
