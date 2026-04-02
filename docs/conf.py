@@ -69,7 +69,8 @@ html_theme = 'sphinx_rtd_theme'
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'airflow': ('https://airflow.apache.org/docs/apache-airflow/stable/', None),
-    'felis': ('https://felis.lsst.io/', None)
+    'felis': ('https://felis.lsst.io/', None),
+    'pydantic': ('https://docs.pydantic.dev/latest/', None)
 }
 
 # -- Options for todo extension ----------------------------------------------

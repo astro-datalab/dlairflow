@@ -9,9 +9,9 @@ from .test_postgresql import MockConnection, temporary_airflow_home  # noqa: F40
 has_felis = True
 try:
     from felis import Schema, Table, Column
+    from pydantic import ValidationError
 except ImportError:
     has_felis = False
-
 
 class MockCursor(object):
     """Simulate a database cursor object.
@@ -356,3 +356,27 @@ def test_get(temporary_airflow_home, temporary_felis_file,  # noqa: F811
             assert isinstance(meta, Schema)
             assert len(meta.tables) == 3
             assert len(meta.tables[0].columns) == 3
+
+@pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
+                         [(False, False, False, False),
+                          (True, True, True, True)])
+def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,
+                              check_description, check_redundant_datatypes,
+                              check_tap_table_indexes, check_tap_principal):
+    """Test validate_schema_file.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_schema_file = p.__dict__['validate_schema_file']
+    try:
+        validate_schema_file(temporary_felis_file,
+                            check_description=check_description,
+                            check_redundant_datatypes=check_redundant_datatypes,
+                            check_tap_table_indexes=check_tap_table_indexes,
+                            check_tap_principal=check_tap_principal)
+    except ValidationError as e:
+        err = e.errors()
+        assert len(err) == 2
+        assert err[0]['msg'] == 'Value error, Table is missing a TAP table index'
+        assert err[1]['msg'] == 'Value error, Table is missing a TAP table index'

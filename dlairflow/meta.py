@@ -63,8 +63,10 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 _has_felis = True
 try:
     from felis import Schema, Table, Column
+    from pydantic import ValidationError
 except ImportError:
     _has_felis = False
+import yaml
 
 
 _postgresql_to_felis = {'double precision': 'double',
@@ -248,3 +250,44 @@ def get(source, item):
             # There should be only one table.
             return felis_schema.tables[0]
         return felis_schema
+
+
+def validate_schema_file(filename,
+                         check_description=False,
+                         check_redundant_datatypes=False,
+                         check_tap_table_indexes=False,
+                         check_tap_principal=False):
+    """Perform validation on `filename`.
+
+    The file should be a YAML file.
+
+    Parameters
+    ----------
+    filename : :class:`str`
+        Name of a file to validate.
+    check_description : :class:`bool`, optional
+        Check that all objects have a valid description
+    check_redundant_datatypes : :class:`bool`, optional
+        Check for redundant type overrides.
+    check_tap_table_indexes : :class:`bool`, optional
+        Check that every table has a unique TAP table index.
+    check_tap_principal : :class:`bool`, optional
+        Check that at least one column per table is flagged as TAP principal.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    :exc:`~pydantic.ValidationError`
+        If `filename` is invalid.
+    """
+    with open(filename, 'r') as YML:
+        data = yaml.safe_load(YML)
+    context = {'check_description': check_description,
+               'check_redundant_datatypes': check_redundant_datatypes,
+               'check_tap_table_indexes': check_tap_table_indexes,
+               'check_tap_principal': check_tap_principal}
+    schema = Schema.model_validate(data, context=context)
+    return
