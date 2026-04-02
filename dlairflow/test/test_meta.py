@@ -13,6 +13,7 @@ try:
 except ImportError:
     has_felis = False
 
+
 class MockCursor(object):
     """Simulate a database cursor object.
     """
@@ -357,10 +358,11 @@ def test_get(temporary_airflow_home, temporary_felis_file,  # noqa: F811
             assert len(meta.tables) == 3
             assert len(meta.tables[0].columns) == 3
 
+
 @pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
                          [(False, False, False, False),
                           (True, True, True, True)])
-def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,
+def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,  # noqa: F811
                               check_description, check_redundant_datatypes,
                               check_tap_table_indexes, check_tap_principal):
     """Test validate_schema_file.
@@ -371,10 +373,10 @@ def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,
     validate_schema_file = p.__dict__['validate_schema_file']
     try:
         validate_schema_file(temporary_felis_file,
-                            check_description=check_description,
-                            check_redundant_datatypes=check_redundant_datatypes,
-                            check_tap_table_indexes=check_tap_table_indexes,
-                            check_tap_principal=check_tap_principal)
+                             check_description=check_description,
+                             check_redundant_datatypes=check_redundant_datatypes,
+                             check_tap_table_indexes=check_tap_table_indexes,
+                             check_tap_principal=check_tap_principal)
     except ValidationError as e:
         err = e.errors()
         assert len(err) == 2

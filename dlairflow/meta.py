@@ -55,6 +55,7 @@ Tasks that involve metadata, verification, etc.
 """
 import os
 import warnings
+import yaml
 try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
@@ -63,10 +64,9 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 _has_felis = True
 try:
     from felis import Schema, Table, Column
-    from pydantic import ValidationError
+    # from pydantic import ValidationError
 except ImportError:
     _has_felis = False
-import yaml
 
 
 _postgresql_to_felis = {'double precision': 'double',
@@ -289,5 +289,5 @@ def validate_schema_file(filename,
                'check_redundant_datatypes': check_redundant_datatypes,
                'check_tap_table_indexes': check_tap_table_indexes,
                'check_tap_principal': check_tap_principal}
-    schema = Schema.model_validate(data, context=context)
+    schema = Schema.model_validate(data, context=context)  # noqa: F841
     return
