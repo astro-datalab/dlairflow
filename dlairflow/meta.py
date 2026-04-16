@@ -43,6 +43,7 @@ Tasks that involve metadata, verification, etc.
 .. _`Command Line Interface`: https://felis.lsst.io/user-guide/cli.html#felis-diff
 """
 import os
+import pathlib
 import warnings
 import yaml
 try:
@@ -288,4 +289,55 @@ def validate_schema_file(filename,
                'check_tap_table_indexes': check_tap_table_indexes,
                'check_tap_principal': check_tap_principal}
     schema = Schema.model_validate(data, context=context)  # noqa: F841
+    return
+
+
+def _validate_fits_file(table, filename):
+    """Compare `table` to `filename`.
+    """
+    pass
+
+
+def _validate_csv_file(table, filename):
+    """Compare `table` to `filename`.
+    """
+    pass
+
+
+def validate_data_files(schema_file, table_name, data_files, data_format='fits'):
+    """Validate one or more data files against `schema_file`.
+
+    Parameters
+    ----------
+    schema_file : :class:`str`
+        Name of a valid Felis schema file.
+    table_name : :class:`str`
+        The name of a table defined within `schema_file`.
+    data_files : :class:`str` or :class:`list`
+        One or more data files to validate.
+    data_format : :class:`str`, optional
+        Format of `data_files`. Could be 'fits' or 'csv'.
+
+    Raises
+    ------
+    :exc:`ValueError`
+        If `table_name` is not defined in `schema_file`, or if `data_format` is
+        and unknown format.
+    """
+    schema = Schema.model_validate(schema_file)
+    found_table = [t for t in schema.tables if t.name == table_name]
+    if len(found_table) != 1:
+        raise ValueError(f"{table_name!r} is not defined in {schema_file!r}!")
+    table = found_table[0]
+    if isinstance(data_files, (str, pathlib.Path)):
+        data_files = [data_files]
+    if data_format not in ('fits', 'csv'):
+        raise ValueError(f"Unknown type {data_format!r} for data files!")
+    for data in data_files:
+        if data_format == 'fits':
+            _validate_fits_file(table, data)
+        elif data_format == 'csv':
+            _validate_csv_file(table, data)
+        else:
+            pass
     return

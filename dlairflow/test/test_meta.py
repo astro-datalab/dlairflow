@@ -3,7 +3,6 @@
 """Test dlairflow.meta.
 """
 import pytest
-import os
 from importlib import import_module
 from .test_postgresql import MockConnection, temporary_airflow_home  # noqa: F401
 has_felis = True
@@ -403,7 +402,7 @@ def test_get(temporary_airflow_home, temporary_felis_file,  # noqa: F811
 @pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
                          [(False, False, False, False),
                           (True, True, True, True)])
-def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,
+def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,  # noqa: F811
                               check_description, check_redundant_datatypes,
                               check_tap_table_indexes, check_tap_principal):
     """Test validate_schema_file.
@@ -424,10 +423,11 @@ def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,
         assert err[0]['msg'] == 'Value error, Table is missing a TAP table index'
         assert err[1]['msg'] == 'Value error, Table is missing a TAP table index'
 
+
 @pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
                          [(False, False, False, False),
                           (True, True, True, True)])
-def test_validate_schema_file_invalid(temporary_airflow_home, temporary_felis_file_invalid,
+def test_validate_schema_file_invalid(temporary_airflow_home, temporary_felis_file_invalid,  # noqa: F811
                                       check_description, check_redundant_datatypes,
                                       check_tap_table_indexes, check_tap_principal):
     """Test validate_schema_file with an invalid file.
