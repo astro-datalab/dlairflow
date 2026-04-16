@@ -8,17 +8,6 @@ Tasks that involve metadata, verification, etc.
 
 .. todo::
 
-    **Implement meta.validate_schema_file**
-
-    Validate Felis yaml file: is the file syntactically correct? The tests
-    (done by Felis calls) likely include: self-consistency, column datatypes and
-    UCDs have allowed values, etc. The command to use is likely:
-    :command:`felis validate [options] schema.yaml`. See also `Schema Validation`_.
-
-.. _`Schema Validation`: https://felis.lsst.io/user-guide/validation.html
-
-.. todo::
-
     **Implement meta.validate_data_files**
 
     Validate initial data against its Felis yaml file: are the data files and
@@ -280,8 +269,17 @@ def validate_schema_file(filename,
 
     Raises
     ------
+    :exc:`TypeError`
+        If `filename` contains invalid types (*e.g.* not 'real', 'double' etc.).
     :exc:`~pydantic.ValidationError`
-        If `filename` is invalid.
+        If `filename` is invalid according to Felis.
+
+    Notes
+    -----
+    This function is equivalent to :command:`felis validate [options] schema.yaml`.
+    See also `Schema Validation`_.
+
+    .. _`Schema Validation`: https://felis.lsst.io/user-guide/validation.html
     """
     with open(filename, 'r') as YML:
         data = yaml.safe_load(YML)

@@ -157,7 +157,48 @@ tables:
     with open(filename, 'w') as FELIS:
         FELIS.write(data)
     yield filename
-    os.remove(filename)
+    filename.unlink(missing_ok=True)
+
+
+@pytest.fixture(scope="function")
+def temporary_felis_file_invalid(tmp_path_factory):
+    """Create a temporary felis that is invalid.
+    """
+    data = """name: name1
+description: "This is a test."
+"@id": name1
+
+tables:
+    - name: name2
+      description: "name2 in name1"
+      "@id": name1.name2
+      columns:
+          - name: id1
+            datatype: random
+            description: "Unique identifier"
+            "@id": name1.name2.id1
+          - name: name3
+            datatype: stuff
+            description: "Real data"
+            "@id": name1.name2.name3
+    - name: table2
+      description: "table2 in name1"
+      "@id": name1.table2
+      columns:
+          - name: id2
+            datatype: foo
+            description: "Unique identifier"
+            "@id": name1.table2.id2
+          - name: data2
+            datatype: bar
+            description: "Double data"
+            "@id": name1.table2.data2
+"""
+    filename = tmp_path_factory.mktemp('felis') / 'felis_invalid.yaml'
+    with open(filename, 'w') as FELIS:
+        FELIS.write(data)
+    yield filename
+    filename.unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="function")
@@ -173,7 +214,7 @@ tables: []
     with open(filename, 'w') as FELIS:
         FELIS.write(data)
     yield filename
-    os.remove(filename)
+    filename.unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="function")
@@ -193,7 +234,7 @@ tables:
     with open(filename, 'w') as FELIS:
         FELIS.write(data)
     yield filename
-    os.remove(filename)
+    filename.unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -362,7 +403,7 @@ def test_get(temporary_airflow_home, temporary_felis_file,  # noqa: F811
 @pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
                          [(False, False, False, False),
                           (True, True, True, True)])
-def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,  # noqa: F811
+def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,
                               check_description, check_redundant_datatypes,
                               check_tap_table_indexes, check_tap_principal):
     """Test validate_schema_file.
@@ -377,6 +418,32 @@ def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,  # n
                              check_redundant_datatypes=check_redundant_datatypes,
                              check_tap_table_indexes=check_tap_table_indexes,
                              check_tap_principal=check_tap_principal)
+    except ValidationError as e:
+        err = e.errors()
+        assert len(err) == 2
+        assert err[0]['msg'] == 'Value error, Table is missing a TAP table index'
+        assert err[1]['msg'] == 'Value error, Table is missing a TAP table index'
+
+@pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
+                         [(False, False, False, False),
+                          (True, True, True, True)])
+def test_validate_schema_file_invalid(temporary_airflow_home, temporary_felis_file_invalid,
+                                      check_description, check_redundant_datatypes,
+                                      check_tap_table_indexes, check_tap_principal):
+    """Test validate_schema_file with an invalid file.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_schema_file = p.__dict__['validate_schema_file']
+    try:
+        validate_schema_file(temporary_felis_file_invalid,
+                             check_description=check_description,
+                             check_redundant_datatypes=check_redundant_datatypes,
+                             check_tap_table_indexes=check_tap_table_indexes,
+                             check_tap_principal=check_tap_principal)
+    except TypeError as e:
+        assert e.args == ("Unknown felis type 'random'",)
     except ValidationError as e:
         err = e.errors()
         assert len(err) == 2
