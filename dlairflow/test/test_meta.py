@@ -436,16 +436,41 @@ def test_validate_schema_file_invalid(temporary_airflow_home, temporary_felis_fi
         pytest.skip("Felis is not installed in the environment.")
     p = import_module('..meta', package='dlairflow.test')
     validate_schema_file = p.__dict__['validate_schema_file']
-    try:
+    with pytest.raises(TypeError, match="Unknown felis type 'random'"):
         validate_schema_file(temporary_felis_file_invalid,
                              check_description=check_description,
                              check_redundant_datatypes=check_redundant_datatypes,
                              check_tap_table_indexes=check_tap_table_indexes,
                              check_tap_principal=check_tap_principal)
-    except TypeError as e:
-        assert e.args == ("Unknown felis type 'random'",)
-    except ValidationError as e:
-        err = e.errors()
-        assert len(err) == 2
-        assert err[0]['msg'] == 'Value error, Table is missing a TAP table index'
-        assert err[1]['msg'] == 'Value error, Table is missing a TAP table index'
+
+
+# def test_validate_data_files(temporary_airflow_home):
+#     """Test
+#     """
+#     if not has_felis:
+#         pytest.skip("Felis is not installed in the environment.")
+#     p = import_module('..meta', package='dlairflow.test')
+
+
+def test_validate_data_files_invalid_schema(temporary_airflow_home, temporary_felis_file_invalid):  # noqa: F811
+    """Test validate_data_files with an invalid schema file.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_data_files = p.__dict__['validate_data_files']
+    with pytest.raises(TypeError, match="Unknown felis type 'random'"):
+        validate_data_files(temporary_felis_file_invalid, 'fake_table', None)
+
+
+def test_validate_data_files_invalid_table(temporary_airflow_home, temporary_felis_file):  # noqa: F811
+    """Test validate_data_files with an invalid table name.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_data_files = p.__dict__['validate_data_files']
+    with pytest.raises(ValueError, match="'fake_table' is not defined"):
+        validate_data_files(temporary_felis_file, 'fake_table', None)
+    with pytest.raises(ValueError, match="Unknown type 'fake' for data files"):
+        validate_data_files(temporary_felis_file, 'table2', 'path', data_format='fake')

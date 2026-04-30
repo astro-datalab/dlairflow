@@ -322,9 +322,11 @@ def validate_data_files(schema_file, table_name, data_files, data_format='fits')
     ------
     :exc:`ValueError`
         If `table_name` is not defined in `schema_file`, or if `data_format` is
-        and unknown format.
+        an unknown format.
     """
-    schema = Schema.model_validate(schema_file)
+    with open(schema_file, 'r') as YML:
+        schema_data = yaml.safe_load(YML)
+    schema = Schema.model_validate(schema_data)
     found_table = [t for t in schema.tables if t.name == table_name]
     if len(found_table) != 1:
         raise ValueError(f"{table_name!r} is not defined in {schema_file!r}!")
