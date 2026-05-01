@@ -42,6 +42,7 @@ Tasks that involve metadata, verification, etc.
 
 .. _`Command Line Interface`: https://felis.lsst.io/user-guide/cli.html#felis-diff
 """
+import csv
 import os
 import pathlib
 import warnings
@@ -292,19 +293,69 @@ def validate_schema_file(filename,
     return
 
 
-def _validate_fits_file(table, filename):
-    """Compare `table` to `filename`.
+def _validate_fits_file(table, filename, hdu, column_order=False):
+    """Compare `table` to FITS file `filename`.
+
+    Parameters
+    ----------
+    table : :class:`~felis.datamodel.Table`
+        A table definition from a Felis schema file.
+    filename : :class:`str`
+        The name of a FITS file.
+    hdu : :class:`int` or :class:`str`
+        The HDU of `filename` to compare to `table`. If `filename` has
+        ``EXTNAME`` keywords set, `hdu` can be a string.
+    column_order : :class:`bool`, optional
+        If ``True``, the order of columns in `filename` should match the
+        order of columns in `table`.
     """
     pass
 
 
-def _validate_csv_file(table, filename):
-    """Compare `table` to `filename`.
+def _validate_csv_file(table, filename, column_order=False):
+    """Compare `table` to CSV file `filename`.
+
+    Parameters
+    ----------
+    table : :class:`~felis.datamodel.Table`
+        A table definition from a Felis schema file.
+    filename : :class:`str`
+        The name of a CSV file.
+    column_order : :class:`bool`, optional
+        If ``True``, the order of columns in `filename` should match the
+        order of columns in `table`.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    :exc:`KeyError`
+        If the column names in `filename` are not compatible with the
+        column names in `table`.
+    :exc:`TypeError`
+        If `filename` contains values in columns that don't match the type
+        specified in `table`.
     """
-    pass
+    felis_column_names = [c.name.lower() for c in table.columns]
+    with open(filename, newline='') as CSV:
+        reader = csv.DictReader(CSV)
+        row = next(reader)
+    csv_column_names = [c.lower() for c in row.fieldnames]
+    if column_order:
+        compatible_names = felis_column_names == csv_column_names
+    else:
+        compatible_names = set(felis_column_names) == set(csv_column_names)
+    if not compatible_names:
+        raise KeyError(f"The columns in '{filename}' do not match the columns of '{table.name}'!")
+    return
 
 
-def validate_data_files(schema_file, table_name, data_files, data_format='fits'):
+def validate_data_files(schema_file, table_name, data_files,
+                        data_format='fits',
+                        hdu=1,
+                        column_order=False):
     """Validate one or more data files against `schema_file`.
 
     Parameters
@@ -317,6 +368,13 @@ def validate_data_files(schema_file, table_name, data_files, data_format='fits')
         One or more data files to validate.
     data_format : :class:`str`, optional
         Format of `data_files`. Could be 'fits' or 'csv'.
+    hdu : :class:`int` or :class:`str`, optional
+        The HDU of `filename` to compare to `table`. If `filename` has
+        ``EXTNAME`` keywords set, `hdu` can be a string. This keyword is ignored
+        if `data_format` is not 'fits'.
+    column_order : :class:`bool`, optional
+        If ``True``, the order of columns in `data_files` should match the
+        order of columns in `schema_file`.
 
     Raises
     ------
@@ -337,9 +395,9 @@ def validate_data_files(schema_file, table_name, data_files, data_format='fits')
         raise ValueError(f"Unknown type {data_format!r} for data files!")
     for data in data_files:
         if data_format == 'fits':
-            _validate_fits_file(table, data)
+            _validate_fits_file(table, data, hdu=hdu, column_order=column_order)
         elif data_format == 'csv':
-            _validate_csv_file(table, data)
+            _validate_csv_file(table, data, column_order=column_order)
         else:
             pass
     return
