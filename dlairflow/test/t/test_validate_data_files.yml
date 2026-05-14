@@ -1,0 +1,29 @@
+name: test_validate_data_files
+description: "This schema is used to test dlairflow.meta.validate_data_files."
+"@id": test_validate_data_files
+
+tables:
+    - name: csv_table
+      description: "Table used to test CSV files"
+      "@id": test_validate_data_files.csv_table
+      columns:
+          - name: id1
+            datatype: "long"
+            description: "Unique identifier"
+            "@id": test_validate_data_files.csv_table.id1
+          - name: name3
+            datatype: "float"
+            description: "Real data"
+            "@id": test_validate_data_files.csv_table.name3
+    - name: fits_table
+      description: "Table used to test FITS files"
+      "@id": test_validate_data_files.fits_table
+      columns:
+          - name: id2
+            datatype: long
+            description: "Unique identifier"
+            "@id": test_validate_data_files.fits_table.id2
+          - name: data2
+            datatype: double
+            description: "Double data"
+            "@id": test_validate_data_files.fits_table.data2

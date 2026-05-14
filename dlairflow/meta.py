@@ -342,7 +342,7 @@ def _validate_csv_file(table, filename, column_order=False):
     with open(filename, newline='') as CSV:
         reader = csv.DictReader(CSV)
         row = next(reader)
-    csv_column_names = [c.lower() for c in row.fieldnames]
+    csv_column_names = [c.lower() for c in reader.fieldnames]
     if column_order:
         compatible_names = felis_column_names == csv_column_names
     else:

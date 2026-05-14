@@ -4,6 +4,7 @@
 """
 import pytest
 from importlib import import_module
+from importlib.resources import files
 from .test_postgresql import MockConnection, temporary_airflow_home  # noqa: F401
 has_felis = True
 try:
@@ -444,12 +445,17 @@ def test_validate_schema_file_invalid(temporary_airflow_home, temporary_felis_fi
                              check_tap_principal=check_tap_principal)
 
 
-# def test_validate_data_files(temporary_airflow_home):
-#     """Test
-#     """
-#     if not has_felis:
-#         pytest.skip("Felis is not installed in the environment.")
-#     p = import_module('..meta', package='dlairflow.test')
+def test_validate_data_files_csv(temporary_airflow_home):
+    """Test validate_data_files on CSV files.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_data_files = p.__dict__['validate_data_files']
+    felis_file = files("dlairflow.test") / "t" / 'test_validate_data_files.yml'
+    csv_file = files("dlairflow.test") / "t" / 'test_validate_data_files.csv'
+    validate_data_files(felis_file, 'csv_table', csv_file, data_format='csv')
+    validate_data_files(felis_file, 'csv_table', [csv_file, csv_file], data_format='csv')
 
 
 def test_validate_data_files_invalid_schema(temporary_airflow_home, temporary_felis_file_invalid):  # noqa: F811
