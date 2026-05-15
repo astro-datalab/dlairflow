@@ -7,23 +7,52 @@ tables:
       description: "Table used to test CSV files"
       "@id": test_validate_data_files.csv_table
       columns:
-          - name: id1
+          - name: long_id
             datatype: "long"
             description: "Unique identifier"
-            "@id": test_validate_data_files.csv_table.id1
-          - name: name3
+            "@id": test_validate_data_files.csv_table.long_id
+          - name: float_value
             datatype: "float"
             description: "Real data"
-            "@id": test_validate_data_files.csv_table.name3
+            "@id": test_validate_data_files.csv_table.float_value
+          - name: bool_value
+            datatype: boolean
+            description: "Logical column"
+            "@id": test_validate_data_files.csv_table.bool_value
+          - name: text_value
+            datatype: text
+            description: "Some characters"
+            "@id": test_validate_data_files.csv_table.text_value
     - name: fits_table
       description: "Table used to test FITS files"
       "@id": test_validate_data_files.fits_table
       columns:
-          - name: id2
+          - name: obj_id
             datatype: long
             description: "Unique identifier"
-            "@id": test_validate_data_files.fits_table.id2
-          - name: data2
+            "@id": test_validate_data_files.fits_table.obj_id
+          - name: ra
             datatype: double
             description: "Double data"
-            "@id": test_validate_data_files.fits_table.data2
+            "@id": test_validate_data_files.fits_table.ra
+          - name: dec
+            datatype: double
+            description: "Double data"
+            "@id": test_validate_data_files.fits_table.dec
+          - name: z
+            datatype: float
+            description: "Double data"
+            "@id": test_validate_data_files.fits_table.z
+          - name: target_bits
+            datatype: int
+            description: "Target information"
+            "@id": test_validate_data_files.fits_table.target_bits
+          - name: observed
+            datatype: boolean
+            description: "Was it observed?"
+            "@id": test_validate_data_files.fits_table.observed
+          - name: obj_name
+            datatype: string
+            length: 5
+            description: "Object name"
+            "@id": test_validate_data_files.fits_table.obj_name

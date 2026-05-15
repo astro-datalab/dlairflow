@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """Test dlairflow.meta.
 """
+import os
 import pytest
 from importlib import import_module
 from importlib.resources import files
@@ -445,17 +446,39 @@ def test_validate_schema_file_invalid(temporary_airflow_home, temporary_felis_fi
                              check_tap_principal=check_tap_principal)
 
 
-def test_validate_data_files_csv(temporary_airflow_home):
-    """Test validate_data_files on CSV files.
+@pytest.mark.parametrize('filename,column_order', [('test_validate_data_files.csv', False),
+                                                   ('test_validate_data_files.csv', True),
+                                                   ('test_validate_data_files_reordered.csv', False),
+                                                   ('test_validate_data_files_reordered.csv', True),
+                                                   ('test_validate_data_files_incompatible_type.csv', False),
+                                                   ('test_validate_data_files.fits', False),
+                                                   ('test_validate_data_files.fits', True),
+                                                   ('test_validate_data_files_reordered.fits', False),
+                                                   ('test_validate_data_files_reordered.fits', True),
+                                                   ('test_validate_data_files_incompatible_type.fits', False)])
+def test_validate_data_files(temporary_airflow_home, filename, column_order):  # noqa: F811
+    """Test validate_data_files on CSV and FITS files.
     """
     if not has_felis:
         pytest.skip("Felis is not installed in the environment.")
     p = import_module('..meta', package='dlairflow.test')
     validate_data_files = p.__dict__['validate_data_files']
     felis_file = files("dlairflow.test") / "t" / 'test_validate_data_files.yml'
-    csv_file = files("dlairflow.test") / "t" / 'test_validate_data_files.csv'
-    validate_data_files(felis_file, 'csv_table', csv_file, data_format='csv')
-    validate_data_files(felis_file, 'csv_table', [csv_file, csv_file], data_format='csv')
+    data_file = files("dlairflow.test") / "t" / filename
+    data_format = os.path.splitext(filename)[1][1:]
+    if 'reordered' in filename and column_order:
+        with pytest.raises(KeyError, match="do not match the columns of"):
+            validate_data_files(felis_file, f'{data_format}_table', data_file,
+                                data_format=data_format, column_order=column_order)
+    elif 'incompatible' in filename:
+        with pytest.raises(TypeError, match=r"has an incompatible type \(expected '(long|float)'\)"):
+            validate_data_files(felis_file, f'{data_format}_table', data_file,
+                                data_format=data_format, column_order=column_order)
+    else:
+        validate_data_files(felis_file, f'{data_format}_table', data_file,
+                            data_format=data_format, column_order=column_order)
+        validate_data_files(felis_file, f'{data_format}_table', [data_file, data_file],
+                            data_format=data_format, column_order=column_order)
 
 
 def test_validate_data_files_invalid_schema(temporary_airflow_home, temporary_felis_file_invalid):  # noqa: F811
@@ -480,3 +503,16 @@ def test_validate_data_files_invalid_table(temporary_airflow_home, temporary_fel
         validate_data_files(temporary_felis_file, 'fake_table', None)
     with pytest.raises(ValueError, match="Unknown type 'fake' for data files"):
         validate_data_files(temporary_felis_file, 'table2', 'path', data_format='fake')
+
+
+def test_convert_bool(temporary_airflow_home):  # noqa: F811
+    """Test the boolean converter for CSV files.
+    """
+    p = import_module('..meta', package='dlairflow.test')
+    convert_bool = p.__dict__['_convert_bool']
+    for T in ('T', 'TRUE', 'yes', '1'):
+        assert convert_bool(T)
+    for F in ('f', 'False', 'NO', '0'):
+        assert not convert_bool(F)
+    with pytest.raises(ValueError, match="could not convert string to bool"):
+        convert_bool('foo')

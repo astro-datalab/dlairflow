@@ -47,6 +47,7 @@ import os
 import pathlib
 import warnings
 import yaml
+from astropy.io import fits
 try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
@@ -293,6 +294,32 @@ def validate_schema_file(filename,
     return
 
 
+def _convert_bool(input):
+    """Execute :class:`bool` on `input`.
+
+    Parameters
+    ----------
+    input : :class:`str`
+        An arbitrary string.
+
+    Returns
+    -------
+    :class:`bool`
+        The converted value of input.
+
+    Raises
+    ------
+    :exc:`ValueError`
+        If `input` could not be converted in an unambigous way.
+    """
+    if input.lower() in ('t', 'true', 'yes', '1'):
+        return True
+    elif input.lower() in ('f', 'false', 'no', '0'):
+        return False
+    else:
+        raise ValueError(f"could not convert string to bool: '{input}'")
+
+
 def _validate_fits_file(table, filename, hdu, column_order=False):
     """Compare `table` to FITS file `filename`.
 
@@ -309,7 +336,31 @@ def _validate_fits_file(table, filename, hdu, column_order=False):
         If ``True``, the order of columns in `filename` should match the
         order of columns in `table`.
     """
-    pass
+    felis_column_names = [c.name.lower() for c in table.columns]
+    with fits.open(filename) as hdulist:
+        data = hdulist[hdu].data
+    fits_column_names = [c.lower() for c in data.columns.names]
+    if column_order:
+        compatible_names = felis_column_names == fits_column_names
+    else:
+        compatible_names = set(felis_column_names) == set(fits_column_names)
+    if not compatible_names:
+        raise KeyError(f"The columns in '{filename}' do not match the columns of '{table.name}'!")
+    map_datatypes = {'short': 'I', 'int': 'J', 'long': 'K',
+                     'float': 'E', 'double': 'D', 'boolean': 'L'}
+    for k, column in enumerate(table.columns):
+        fits_column = data.columns.names[fits_column_names.index(felis_column_names[k])]
+        fits_datatype = data.columns.formats[fits_column_names.index(felis_column_names[k])]
+        compatible = False
+        try:
+            compatible = map_datatypes[str(column.datatype)] == fits_datatype
+        except KeyError:
+            if column.datatype in ('char', 'string', 'text', 'timestamp') and 'A' in fits_datatype:
+                # Eventually compare string lengths here.
+                compatible = True
+        if not compatible:
+            raise TypeError(f"The column '{fits_column}' in '{filename}' has an incompatible type (expected '{column.datatype}')!")
+    return
 
 
 def _validate_csv_file(table, filename, column_order=False):
@@ -349,6 +400,21 @@ def _validate_csv_file(table, filename, column_order=False):
         compatible_names = set(felis_column_names) == set(csv_column_names)
     if not compatible_names:
         raise KeyError(f"The columns in '{filename}' do not match the columns of '{table.name}'!")
+    for k, column in enumerate(table.columns):
+        csv_column = reader.fieldnames[csv_column_names.index(felis_column_names[k])]
+        csv_value = row[csv_column]
+        if column.datatype in ('short', 'int', 'long'):
+            convert_type = int
+        elif column.datatype in ('float', 'double'):
+            convert_type = float
+        elif column.datatype in ('boolean'):
+            convert_type = _convert_bool
+        elif column.datatype in ('char', 'string', 'text', 'timestamp'):
+            convert_type = str
+        try:
+            felis_value = convert_type(csv_value)
+        except ValueError:
+            raise TypeError(f"The column '{csv_column}' in '{filename}' has an incompatible type (expected '{column.datatype}')!")
     return
 
 
@@ -396,8 +462,7 @@ def validate_data_files(schema_file, table_name, data_files,
     for data in data_files:
         if data_format == 'fits':
             _validate_fits_file(table, data, hdu=hdu, column_order=column_order)
-        elif data_format == 'csv':
-            _validate_csv_file(table, data, column_order=column_order)
+        # elif data_format == 'csv':
         else:
-            pass
+            _validate_csv_file(table, data, column_order=column_order)
     return
