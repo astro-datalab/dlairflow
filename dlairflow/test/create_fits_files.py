@@ -7,6 +7,7 @@ from importlib.resources import files
 import numpy as np
 from astropy.io import fits
 
+
 def main():
     """Entry-point for command-line scripts.
 
@@ -19,9 +20,9 @@ def main():
     columns = [fits.Column(name='OBJ_ID', format='K',
                            array=rng.integers(low=2**32, high=2**63, size=10, dtype=np.int64)),
                fits.Column(name='RA', format='D',
-                           array=360.0*rng.random(10, dtype=np.float64)),
+                           array=360.0 * rng.random(10, dtype=np.float64)),
                fits.Column(name='DEC', format='D',
-                           array=180.0*rng.random(10, dtype=np.float64)-90.0),
+                           array=180.0 * rng.random(10, dtype=np.float64) - 90.0),
                fits.Column(name='Z', format='E',
                            array=rng.random(10, dtype=np.float32)),
                fits.Column(name='TARGET_BITS', format='J',
@@ -53,9 +54,9 @@ def main():
     #
     # Reorder columns.
     #
-    # columns[3] = old_column
+    columns[3] = old_column
     rng.shuffle(columns)
-    print(columns)
+    # print(columns)
     hdulist = fits.HDUList([fits.PrimaryHDU(),
                             fits.BinTableHDU.from_columns(columns, name='FITS_TABLE')])
     hdulist.writeto(files('dlairflow.test') / 't' / 'test_validate_data_files_reordered.fits',

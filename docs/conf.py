@@ -51,7 +51,7 @@ napoleon_include_private_with_doc = True
 
 # We don't necessarily need a full installation to build documentation.
 autodoc_mock_imports = []
-for missing in ('airflow', 'felis', 'pydantic', 'yaml'):
+for missing in ('airflow', 'astropy', 'felis', 'pydantic', 'yaml'):
     try:
         foo = import_module(missing)
     except ImportError:
@@ -70,7 +70,8 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'airflow': ('https://airflow.apache.org/docs/apache-airflow/stable/', None),
     'felis': ('https://felis.lsst.io/', None),
-    'pydantic': ('https://docs.pydantic.dev/latest/', None)
+    'pydantic': ('https://docs.pydantic.dev/latest/', None),
+    'astropy': ('https://docs.astropy.org/en/stable/', None)
 }
 
 # -- Options for todo extension ----------------------------------------------

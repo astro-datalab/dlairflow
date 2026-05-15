@@ -359,7 +359,8 @@ def _validate_fits_file(table, filename, hdu, column_order=False):
                 # Eventually compare string lengths here.
                 compatible = True
         if not compatible:
-            raise TypeError(f"The column '{fits_column}' in '{filename}' has an incompatible type (expected '{column.datatype}')!")
+            raise TypeError(f"The column '{fits_column}' in '{filename}' has an " +
+                            f"incompatible type (expected '{column.datatype}')!")
     return
 
 
@@ -412,9 +413,10 @@ def _validate_csv_file(table, filename, column_order=False):
         elif column.datatype in ('char', 'string', 'text', 'timestamp'):
             convert_type = str
         try:
-            felis_value = convert_type(csv_value)
+            felis_value = convert_type(csv_value)  # noqa: F841
         except ValueError:
-            raise TypeError(f"The column '{csv_column}' in '{filename}' has an incompatible type (expected '{column.datatype}')!")
+            raise TypeError(f"The column '{csv_column}' in '{filename}' has an " +
+                            f"incompatible type (expected '{column.datatype}')!")
     return
 
 
