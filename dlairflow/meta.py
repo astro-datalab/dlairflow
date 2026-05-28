@@ -8,18 +8,6 @@ Tasks that involve metadata, verification, etc.
 
 .. todo::
 
-    **Implement meta.validate_data_files**
-
-    Validate initial data against its Felis yaml file: are the data files and
-    the yaml file compatible? The calling signature should take both the path
-    of the Felis yaml file, and the path(s) of data file(s) that are presumably
-    described by the yaml file. For each data file, verify that its content
-    (*e.g.*, fields, dtypes, indices, etc.) is commensurate with the yaml file.
-    The function could either take a single data file path, or a list of such data
-    file paths.
-
-.. todo::
-
     **Implement meta.validate_db_schema**
 
     Validate DB schema contents against its Felis yaml file.
@@ -48,6 +36,7 @@ import pathlib
 import warnings
 import yaml
 from astropy.io import fits
+from sqlalchemy import MetaData
 try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
@@ -56,9 +45,12 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 _has_felis = True
 try:
     from felis import Schema, Table, Column
+    from felis.db.database_context import create_database_context
+    from felis.diff import DatabaseDiff
     # from pydantic import ValidationError
 except ImportError:
     _has_felis = False
+from .postgresql import _connection_to_environment
 
 
 _postgresql_to_felis = {'double precision': 'double',
@@ -437,7 +429,7 @@ def validate_data_files(schema_file, table_name, data_files,
     data_format : :class:`str`, optional
         Format of `data_files`. Could be 'fits' or 'csv'.
     hdu : :class:`int` or :class:`str`, optional
-        The HDU of `filename` to compare to `table`. If `filename` has
+        The HDU of the data files to compare to `table`. If the files have
         ``EXTNAME`` keywords set, `hdu` can be a string. This keyword is ignored
         if `data_format` is not 'fits'.
     column_order : :class:`bool`, optional
@@ -446,6 +438,12 @@ def validate_data_files(schema_file, table_name, data_files,
 
     Raises
     ------
+    :exc:`KeyError`
+        If the column names in the data files are not compatible with the
+        column names defined for `table_name`.
+    :exc:`TypeError`
+        If the data files contain values in columns that don't match the type
+        specified in `schema_file`.
     :exc:`ValueError`
         If `table_name` is not defined in `schema_file`, or if `data_format` is
         an unknown format.
@@ -467,4 +465,61 @@ def validate_data_files(schema_file, table_name, data_files,
         # elif data_format == 'csv':
         else:
             _validate_csv_file(table, data, column_order=column_order)
+    return
+
+
+def _connection_to_sqlalchemy_url(connection, db_type='postgresql'):
+    """Convert a database connection to a `SQLAlchemy Database URL`_.
+
+    .. _`SQLAlchemy Database URL`: https://docs.sqlalchemy.org/en/20/core/engines.html
+
+    Parameters
+    ----------
+    connection : :class:`str`
+        An Airflow database connection string.
+    db_type : :class:`str`, optional
+        The "dialect plus driver" of the database.
+
+    Returns
+    -------
+    :class:`str`
+        A connection URL as a string.
+
+    Notes
+    -----
+    Although ``PostgresHook`` objects have a ``sqlalchemy_url`` attribute,
+    not all subclasses of ``BaseHook`` are guaranteed to have such an attribute.
+    """
+    env = _connection_to_environment(connection)
+    return f"{db_type}://{env['PGUSER']}:{env['PGPASSWORD']}@{env['PGHOST']}/{env['PGDATABASE']}"
+
+
+def validate_database(schema_file, connection, db_type='postgresql', id_generation=False):
+    """Validate the table(s) defined in `schema_file` against a database.
+
+    Parameters
+    ----------
+    schema_file : :class:`str`
+        Name of a valid Felis schema file.
+    connection : :class:`str`
+        An Airflow database connection string.
+    db_type : :class:`str`, optional
+        The "dialect plus driver" of the database.
+    id_generation : :class:`bool`, optional
+        If ``True`` generate or assume the generation of IDs for objects
+        that do not have them.
+
+    Raises
+    ------
+    :exc:`ValueError`
+        If the tables in `connection` do not match `schema_file`.
+    """
+    schema = Schema.from_uri(schema_file,
+                             context={"id_generation": id_generation})
+    database_url = _connection_to_sqlalchemy_url(connection, db_type=db_type)
+    metadata = MetaData()
+    with create_database_context(database_url, metadata) as db:
+        diff = DatabaseDiff(schema, db.engine)
+    if diff.has_changes:
+        raise ValueError(f"The database '{database_url}' does not match {schema_file}!")
     return
