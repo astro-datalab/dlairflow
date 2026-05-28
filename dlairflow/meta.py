@@ -37,6 +37,7 @@ import warnings
 import yaml
 from astropy.io import fits
 from sqlalchemy import MetaData
+from .postgresql import _connection_to_environment
 try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
@@ -50,7 +51,6 @@ try:
     # from pydantic import ValidationError
 except ImportError:
     _has_felis = False
-from .postgresql import _connection_to_environment
 
 
 _postgresql_to_felis = {'double precision': 'double',
