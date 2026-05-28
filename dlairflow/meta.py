@@ -519,7 +519,8 @@ def validate_database(schema_file, connection, db_type='postgresql', id_generati
                              context={"id_generation": id_generation})
     database_url = _connection_to_sqlalchemy_url(connection, db_type=db_type)
     # metadata = create_metadata(schema, engine_url=database_url)
-    metadata = create_metadata(schema_file, id_generation=id_generation)
+    with open(schema_file) as SCHEMA:
+        metadata = create_metadata(SCHEMA, id_generation=id_generation)
     with create_database_context(database_url, metadata) as db:
         diff = DatabaseDiff(schema, db.engine)
     if diff.has_changes:
