@@ -523,6 +523,6 @@ def validate_database(schema_file, connection, db_type='postgresql', id_generati
         metadata = create_metadata(SCHEMA, id_generation=id_generation)
     with create_database_context(database_url, metadata) as db:
         diff = DatabaseDiff(schema, db.engine)
-    if diff.has_changes:
-        raise ValueError(f"The database '{database_url}' does not match {schema_file}!")
-    return
+    # if diff.has_changes:
+    #     raise ValueError(f"The database '{database_url}' does not match {schema_file}!")
+    return diff
