@@ -48,6 +48,7 @@ try:
     from felis import Schema, Table, Column
     from felis.db.database_context import create_database_context
     from felis.diff import DatabaseDiff
+    from felis.metadata import create_metadata
     # from pydantic import ValidationError
 except ImportError:
     _has_felis = False
@@ -517,7 +518,7 @@ def validate_database(schema_file, connection, db_type='postgresql', id_generati
     schema = Schema.from_uri(schema_file,
                              context={"id_generation": id_generation})
     database_url = _connection_to_sqlalchemy_url(connection, db_type=db_type)
-    metadata = MetaData()
+    metadata = create_metadata(schema, engine_url=database_url)
     with create_database_context(database_url, metadata) as db:
         diff = DatabaseDiff(schema, db.engine)
     if diff.has_changes:
