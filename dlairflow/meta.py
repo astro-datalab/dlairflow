@@ -294,6 +294,8 @@ def validate_schema_file_task(*args, **kwargs):
     """This is a predfined task wrapper on :func:`validate_schema_file`.
     See that function for input parameters and exceptions raised.
     """
+    if 'dag' in kwargs:
+        del kwargs['dag']
     schema = validate_schema_file(*args, **kwargs)  # noqa: F841
     return
 
