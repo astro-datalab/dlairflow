@@ -33,12 +33,16 @@ Tasks that involve metadata, verification, etc.
 import csv
 import os
 import pathlib
+import logging
 import warnings
 import yaml
 from astropy.io import fits
 # from sqlalchemy import MetaData
 from .postgresql import _connection_to_environment
-from airflow.sdk import task
+try:
+    from airflow.sdk import task
+except ImportError:
+    from airflow.decorators import task
 try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
@@ -294,8 +298,12 @@ def validate_schema_file_task(*args, **kwargs):
     """This is a predfined task wrapper on :func:`validate_schema_file`.
     See that function for input parameters and exceptions raised.
     """
+    log = logging.get_logger('airflow.task')
+    log.info(list(kwargs.keys()))
     if 'dag' in kwargs:
         del kwargs['dag']
+    if 'inlets' in kwargs:
+        del kwargs['inlets']
     schema = validate_schema_file(*args, **kwargs)  # noqa: F841
     return
 

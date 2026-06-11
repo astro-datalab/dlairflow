@@ -426,11 +426,12 @@ def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,  # n
         assert err[1]['msg'] == 'Value error, Table is missing a TAP table index'
 
 
-def test_validate_schema_file_task(temporary_airflow_home, temporary_felis_file):
+def test_validate_schema_file_task(temporary_airflow_home, temporary_felis_file):  # noqa: F811
     """Test the task wrapper for validate_schema_file.
     """
     p = import_module('..meta', package='dlairflow.test')
     validate_schema_file_task = p.__dict__['validate_schema_file_task']
+    assert hasattr(validate_schema_file_task, 'task_id')
 
 
 @pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
