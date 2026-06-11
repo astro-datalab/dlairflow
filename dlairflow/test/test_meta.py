@@ -3,6 +3,7 @@
 """Test dlairflow.meta.
 """
 import os
+import logging
 import pytest
 from importlib import import_module
 from importlib.resources import files
@@ -426,12 +427,25 @@ def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,  # n
         assert err[1]['msg'] == 'Value error, Table is missing a TAP table index'
 
 
-def test_validate_schema_file_task(temporary_airflow_home, temporary_felis_file):  # noqa: F811
+def test_validate_schema_file_task(caplog, temporary_airflow_home, temporary_felis_file):  # noqa: F811
     """Test the task wrapper for validate_schema_file.
     """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    caplog.set_level(logging.INFO)
     p = import_module('..meta', package='dlairflow.test')
     validate_schema_file_task = p.__dict__['validate_schema_file_task']
-    assert hasattr(validate_schema_file_task, 'task_id')
+    assert hasattr(validate_schema_file_task, 'function')
+    assert hasattr(validate_schema_file_task, 'kwargs')
+    assert validate_schema_file_task.kwargs['task_id'] == 'validate_schema_file_task'
+    t = validate_schema_file_task(temporary_felis_file,
+                                  check_description=False,
+                                  check_redundant_datatypes=False,
+                                  check_tap_table_indexes=False,
+                                  check_tap_principal=False)
+    # assert hasattr(t, 'task_id')
+    for record in caplog.records:
+        assert hasattr(record, 'foo')
 
 
 @pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',

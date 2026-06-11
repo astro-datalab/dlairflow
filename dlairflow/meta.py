@@ -299,12 +299,13 @@ def validate_schema_file_task(*args, **kwargs):
     See that function for input parameters and exceptions raised.
     """
     log = logging.getLogger('airflow.task')
+    log.info(str(args))
     log.info(list(kwargs.keys()))
-    if 'dag' in kwargs:
-        del kwargs['dag']
-    if 'inlets' in kwargs:
-        del kwargs['inlets']
-    schema = validate_schema_file(*args, **kwargs)  # noqa: F841
+    # if 'dag' in kwargs:
+    #     del kwargs['dag']
+    # if 'inlets' in kwargs:
+    #     del kwargs['inlets']
+    schema = validate_schema_file(*args)  # noqa: F841
     return
 
 
