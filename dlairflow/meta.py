@@ -38,6 +38,7 @@ import yaml
 from astropy.io import fits
 # from sqlalchemy import MetaData
 from .postgresql import _connection_to_environment
+from airflow.sdk import task
 try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
@@ -261,7 +262,8 @@ def validate_schema_file(filename,
 
     Returns
     -------
-    None
+    :class:`~felis.Schema`
+        The parsed Schema for further use.
 
     Raises
     ------
@@ -283,7 +285,16 @@ def validate_schema_file(filename,
                'check_redundant_datatypes': check_redundant_datatypes,
                'check_tap_table_indexes': check_tap_table_indexes,
                'check_tap_principal': check_tap_principal}
-    schema = Schema.model_validate(data, context=context)  # noqa: F841
+    schema = Schema.model_validate(data, context=context)
+    return schema
+
+
+@task(task_id='validate_schema_file_task')
+def validate_schema_file_task(*args, **kwargs):
+    """This is a predfined task wrapper on :func:`validate_schema_file`.
+    See that function for input parameters and exceptions raised.
+    """
+    schema = validate_schema_file(*args, **kwargs)  # noqa: F841
     return
 
 
