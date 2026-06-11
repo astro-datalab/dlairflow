@@ -432,6 +432,7 @@ def test_validate_schema_file_task(caplog, temporary_airflow_home, temporary_fel
     """
     if not has_felis:
         pytest.skip("Felis is not installed in the environment.")
+    from airflow.sdk import XComArg
     caplog.set_level(logging.INFO)
     p = import_module('..meta', package='dlairflow.test')
     validate_schema_file_task = p.__dict__['validate_schema_file_task']
@@ -443,9 +444,9 @@ def test_validate_schema_file_task(caplog, temporary_airflow_home, temporary_fel
                                   check_redundant_datatypes=False,
                                   check_tap_table_indexes=False,
                                   check_tap_principal=False)
-    # assert hasattr(t, 'task_id')
-    for record in caplog.records:
-        assert hasattr(record, 'foo')
+    assert isinstance(t, XComArg)
+    # for record in caplog.records:
+    #     assert hasattr(record, 'foo')
 
 
 @pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
