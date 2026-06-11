@@ -301,11 +301,13 @@ def validate_schema_file_task(*args, **kwargs):
     log = logging.getLogger('airflow.task')
     log.info(str(args))
     log.info(list(kwargs.keys()))
-    # if 'dag' in kwargs:
-    #     del kwargs['dag']
-    # if 'inlets' in kwargs:
-    #     del kwargs['inlets']
-    schema = validate_schema_file(*args)  # noqa: F841
+    cleaned_kwargs = dict()
+    for k in ('check_description', 'check_redundant_datatypes',
+              'check_tap_table_indexes', 'check_tap_principal'):
+        if k in kwargs:
+            cleaned_kwargs[k] = kwargs[k]
+    log.info(list(cleaned_kwargs.keys()))
+    schema = validate_schema_file(*args, **cleaned_kwargs)  # noqa: F841
     return
 
 
