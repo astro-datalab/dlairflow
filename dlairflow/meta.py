@@ -298,7 +298,7 @@ def validate_schema_file_task(*args, **kwargs):
     """This is a predfined task wrapper on :func:`validate_schema_file`.
     See that function for input parameters and exceptions raised.
     """
-    log = logging.get_logger('airflow.task')
+    log = logging.getLogger('airflow.task')
     log.info(list(kwargs.keys()))
     if 'dag' in kwargs:
         del kwargs['dag']
