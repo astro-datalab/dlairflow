@@ -308,7 +308,7 @@ def validate_schema_file_task(*args, **kwargs):
             cleaned_kwargs[k] = kwargs[k]
     log.info(list(cleaned_kwargs.keys()))
     schema = validate_schema_file(*args, **cleaned_kwargs)  # noqa: F841
-    return
+    return schema
 
 
 def _convert_bool(input):
