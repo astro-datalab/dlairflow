@@ -11,7 +11,6 @@ import pendulum
 import tempfile
 from importlib import import_module
 from importlib.resources import files
-# from .test_meta import temporary_felis_file
 has_felis = True
 try:
     from felis import Schema
@@ -20,16 +19,21 @@ except ImportError:
 
 
 def setup_airflow_home():
+    """Create a temporary ``AIRFLOW_HOME``.
+    """
     airflow_home = tempfile.mkdtemp()
     os.makedirs(os.path.join(airflow_home, 'dags'), exist_ok=True)
+    bundle = [{"name": "test",
+               "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
+               "kwargs": {"path": str(os.path.realpath(__file__))}}]
     os.environ['AIRFLOW_HOME'] = airflow_home
     os.environ['AIRFLOW__CORE__UNIT_TEST_MODE'] = 'True'
-    os.environ["AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST"] = json.dumps([{"name": "test",
-                                                                                "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
-                                                                                "kwargs": {"path": str(os.path.realpath(__file__))}}])
+    os.environ["AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST"] = json.dumps(bundle)
 
 
 def cleanup_airflow_home():
+    """Remove the temporary ``AIRFLOW_HOME``.
+    """
     airflow_home = os.environ['AIRFLOW_HOME']
     del os.environ["AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST"]
     del os.environ['AIRFLOW__CORE__UNIT_TEST_MODE']
@@ -81,7 +85,7 @@ def test_validate_schema_file_task(caplog):  # noqa: F811
     assert ti.state == TaskInstanceState.SUCCESS
     result = ti.xcom_pull()
     assert isinstance(result, dict)  # Serialized version of Schema object.
-    print(result)
+    # print(result)
     schema = Schema.model_validate_json(json.dumps(result['__data__']))
     assert isinstance(schema, Schema)
     cleanup_airflow_home()

@@ -4,6 +4,7 @@
 """
 import os
 import pytest
+from unittest.mock import MagicMock
 from importlib import import_module
 from importlib.resources import files
 from .test_postgresql import MockConnection, temporary_airflow_home  # noqa: F401
@@ -518,21 +519,48 @@ def test_convert_bool(temporary_airflow_home):  # noqa: F811
         convert_bool('foo')
 
 
-def test__connection_to_sqlalchemy_url(temporary_airflow_home):  # noqa: F811
+def test__connection_to_sqlalchemy_url(monkeypatch, temporary_airflow_home):  # noqa: F811
     """Test validation of database tables.
 
     Note that DatabaseDiff currently has some problems with PostgreSQL,
     so we'll mock up a number of functions.
     """
+    def mock_environment(connection):
+        return {'PGUSER': 'mock', 'PGPASSWORD': 'mock', 'PGHOST': 'mock', 'PGDATABASE': 'mock'}
+    monkeypatch.setattr('dlairflow.meta._connection_to_environment', mock_environment)
     p = import_module('..meta', package='dlairflow.test')
     _connection_to_sqlalchemy_url = p.__dict__['_connection_to_sqlalchemy_url']
+    url = _connection_to_sqlalchemy_url('foo')
+    assert url == "postgresql://mock:mock@mock/mock"
 
 
-def test_validate_database(temporary_airflow_home):  # noqa: F811
+def test_validate_database(monkeypatch, temporary_airflow_home, temporary_felis_file):  # noqa: F811
     """Test validation of database tables.
 
     Note that DatabaseDiff currently has some problems with PostgreSQL,
     so we'll mock up a number of functions.
     """
+    def mock_environment(connection):
+        return {'PGUSER': 'mock', 'PGPASSWORD': 'mock', 'PGHOST': 'mock', 'PGDATABASE': 'mock'}
+
+    monkeypatch.setattr('dlairflow.meta._connection_to_environment', mock_environment)
+
+    def mock_create_metadata(FILE, id_generation=False):
+        return FILE.read()
+
+    monkeypatch.setattr('dlairflow.meta.create_metadata', mock_create_metadata)
+    mock_create_database_context_value = MagicMock()
+    mock_create_database_context_value.engine = 'foo'
+    mock_create_database_context_manager = MagicMock()
+    mock_create_database_context_manager.__enter__.return_value = mock_create_database_context_value
+    mock_create_database_context = MagicMock(return_value=mock_create_database_context_manager)
+    monkeypatch.setattr('dlairflow.meta.create_database_context', mock_create_database_context)
+
+    def mock_DatabaseDiff(schema, engine):
+        return 'foo'
+
+    monkeypatch.setattr('dlairflow.meta.DatabaseDiff', mock_DatabaseDiff)
     p = import_module('..meta', package='dlairflow.test')
     validate_database = p.__dict__['validate_database']
+    diff = validate_database(temporary_felis_file, 'connection')
+    assert diff == 'foo'
