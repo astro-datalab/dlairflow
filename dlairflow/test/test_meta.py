@@ -540,6 +540,9 @@ def test_validate_database(monkeypatch, temporary_airflow_home, temporary_felis_
     Note that DatabaseDiff currently has some problems with PostgreSQL,
     so we'll mock up a number of functions.
     """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+
     def mock_environment(connection):
         return {'PGUSER': 'mock', 'PGPASSWORD': 'mock', 'PGHOST': 'mock', 'PGDATABASE': 'mock'}
 
