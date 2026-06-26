@@ -46,7 +46,10 @@ def create():
     """
     setup_airflow_home()
     from airflow.utils.db import upgradedb
-    from airflow.sdk import DAG
+    try:
+        from airflow.sdk import DAG
+    except ImportError:
+        from airflow import DAG
     upgradedb()
     p = import_module('..meta', package='dlairflow.test')
     validate_schema_file_task = p.__dict__['validate_schema_file_task']
