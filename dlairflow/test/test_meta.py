@@ -2,13 +2,16 @@
 # -*- coding: utf-8 -*-
 """Test dlairflow.meta.
 """
-import pytest
 import os
+import pytest
+from unittest.mock import MagicMock
 from importlib import import_module
+from importlib.resources import files
 from .test_postgresql import MockConnection, temporary_airflow_home  # noqa: F401
 has_felis = True
 try:
     from felis import Schema, Table, Column
+    from pydantic import ValidationError
 except ImportError:
     has_felis = False
 
@@ -156,7 +159,48 @@ tables:
     with open(filename, 'w') as FELIS:
         FELIS.write(data)
     yield filename
-    os.remove(filename)
+    filename.unlink(missing_ok=True)
+
+
+@pytest.fixture(scope="function")
+def temporary_felis_file_invalid(tmp_path_factory):
+    """Create a temporary felis that is invalid.
+    """
+    data = """name: name1
+description: "This is a test."
+"@id": name1
+
+tables:
+    - name: name2
+      description: "name2 in name1"
+      "@id": name1.name2
+      columns:
+          - name: id1
+            datatype: random
+            description: "Unique identifier"
+            "@id": name1.name2.id1
+          - name: name3
+            datatype: stuff
+            description: "Real data"
+            "@id": name1.name2.name3
+    - name: table2
+      description: "table2 in name1"
+      "@id": name1.table2
+      columns:
+          - name: id2
+            datatype: foo
+            description: "Unique identifier"
+            "@id": name1.table2.id2
+          - name: data2
+            datatype: bar
+            description: "Double data"
+            "@id": name1.table2.data2
+"""
+    filename = tmp_path_factory.mktemp('felis') / 'felis_invalid.yaml'
+    with open(filename, 'w') as FELIS:
+        FELIS.write(data)
+    yield filename
+    filename.unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="function")
@@ -172,7 +216,7 @@ tables: []
     with open(filename, 'w') as FELIS:
         FELIS.write(data)
     yield filename
-    os.remove(filename)
+    filename.unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="function")
@@ -192,7 +236,7 @@ tables:
     with open(filename, 'w') as FELIS:
         FELIS.write(data)
     yield filename
-    os.remove(filename)
+    filename.unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -356,3 +400,170 @@ def test_get(temporary_airflow_home, temporary_felis_file,  # noqa: F811
             assert isinstance(meta, Schema)
             assert len(meta.tables) == 3
             assert len(meta.tables[0].columns) == 3
+
+
+@pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
+                         [(False, False, False, False),
+                          (True, True, True, True)])
+def test_validate_schema_file(temporary_airflow_home, temporary_felis_file,  # noqa: F811
+                              check_description, check_redundant_datatypes,
+                              check_tap_table_indexes, check_tap_principal):
+    """Test validate_schema_file.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_schema_file = p.__dict__['validate_schema_file']
+    try:
+        validate_schema_file(temporary_felis_file,
+                             check_description=check_description,
+                             check_redundant_datatypes=check_redundant_datatypes,
+                             check_tap_table_indexes=check_tap_table_indexes,
+                             check_tap_principal=check_tap_principal)
+    except ValidationError as e:
+        err = e.errors()
+        assert len(err) == 2
+        assert err[0]['msg'] == 'Value error, Table is missing a TAP table index'
+        assert err[1]['msg'] == 'Value error, Table is missing a TAP table index'
+
+
+@pytest.mark.parametrize('check_description,check_redundant_datatypes,check_tap_table_indexes,check_tap_principal',
+                         [(False, False, False, False),
+                          (True, True, True, True)])
+def test_validate_schema_file_invalid(temporary_airflow_home, temporary_felis_file_invalid,  # noqa: F811
+                                      check_description, check_redundant_datatypes,
+                                      check_tap_table_indexes, check_tap_principal):
+    """Test validate_schema_file with an invalid file.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_schema_file = p.__dict__['validate_schema_file']
+    with pytest.raises(TypeError, match="Unknown felis type 'random'"):
+        validate_schema_file(temporary_felis_file_invalid,
+                             check_description=check_description,
+                             check_redundant_datatypes=check_redundant_datatypes,
+                             check_tap_table_indexes=check_tap_table_indexes,
+                             check_tap_principal=check_tap_principal)
+
+
+@pytest.mark.parametrize('filename,column_order', [('test_validate_data_files.csv', False),
+                                                   ('test_validate_data_files.csv', True),
+                                                   ('test_validate_data_files_reordered.csv', False),
+                                                   ('test_validate_data_files_reordered.csv', True),
+                                                   ('test_validate_data_files_incompatible_type.csv', False),
+                                                   ('test_validate_data_files.fits', False),
+                                                   ('test_validate_data_files.fits', True),
+                                                   ('test_validate_data_files_reordered.fits', False),
+                                                   ('test_validate_data_files_reordered.fits', True),
+                                                   ('test_validate_data_files_incompatible_type.fits', False)])
+def test_validate_data_files(temporary_airflow_home, filename, column_order):  # noqa: F811
+    """Test validate_data_files on CSV and FITS files.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_data_files = p.__dict__['validate_data_files']
+    felis_file = files("dlairflow.test") / "t" / 'test_validate_data_files.yml'
+    data_file = files("dlairflow.test") / "t" / filename
+    data_format = os.path.splitext(filename)[1][1:]
+    if 'reordered' in filename and column_order:
+        with pytest.raises(KeyError, match="do not match the columns of"):
+            validate_data_files(felis_file, f'{data_format}_table', data_file,
+                                data_format=data_format, column_order=column_order)
+    elif 'incompatible' in filename:
+        with pytest.raises(TypeError, match=r"has an incompatible type \(expected '(long|float)'\)"):
+            validate_data_files(felis_file, f'{data_format}_table', data_file,
+                                data_format=data_format, column_order=column_order)
+    else:
+        validate_data_files(felis_file, f'{data_format}_table', data_file,
+                            data_format=data_format, column_order=column_order)
+        validate_data_files(felis_file, f'{data_format}_table', [data_file, data_file],
+                            data_format=data_format, column_order=column_order)
+
+
+def test_validate_data_files_invalid_schema(temporary_airflow_home, temporary_felis_file_invalid):  # noqa: F811
+    """Test validate_data_files with an invalid schema file.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_data_files = p.__dict__['validate_data_files']
+    with pytest.raises(TypeError, match="Unknown felis type 'random'"):
+        validate_data_files(temporary_felis_file_invalid, 'fake_table', None)
+
+
+def test_validate_data_files_invalid_table(temporary_airflow_home, temporary_felis_file):  # noqa: F811
+    """Test validate_data_files with an invalid table name.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+    p = import_module('..meta', package='dlairflow.test')
+    validate_data_files = p.__dict__['validate_data_files']
+    with pytest.raises(ValueError, match="'fake_table' is not defined"):
+        validate_data_files(temporary_felis_file, 'fake_table', None)
+    with pytest.raises(ValueError, match="Unknown type 'fake' for data files"):
+        validate_data_files(temporary_felis_file, 'table2', 'path', data_format='fake')
+
+
+def test_convert_bool(temporary_airflow_home):  # noqa: F811
+    """Test the boolean converter for CSV files.
+    """
+    p = import_module('..meta', package='dlairflow.test')
+    convert_bool = p.__dict__['_convert_bool']
+    for T in ('T', 'TRUE', 'yes', '1'):
+        assert convert_bool(T)
+    for F in ('f', 'False', 'NO', '0'):
+        assert not convert_bool(F)
+    with pytest.raises(ValueError, match="could not convert string to bool"):
+        convert_bool('foo')
+
+
+def test__connection_to_sqlalchemy_url(monkeypatch, temporary_airflow_home):  # noqa: F811
+    """Test validation of database tables.
+
+    Note that DatabaseDiff currently has some problems with PostgreSQL,
+    so we'll mock up a number of functions.
+    """
+    def mock_environment(connection):
+        return {'PGUSER': 'mock', 'PGPASSWORD': 'mock', 'PGHOST': 'mock', 'PGDATABASE': 'mock'}
+    monkeypatch.setattr('dlairflow.meta._connection_to_environment', mock_environment)
+    p = import_module('..meta', package='dlairflow.test')
+    _connection_to_sqlalchemy_url = p.__dict__['_connection_to_sqlalchemy_url']
+    url = _connection_to_sqlalchemy_url('foo')
+    assert url == "postgresql://mock:mock@mock/mock"
+
+
+def test_validate_database(monkeypatch, temporary_airflow_home, temporary_felis_file):  # noqa: F811
+    """Test validation of database tables.
+
+    Note that DatabaseDiff currently has some problems with PostgreSQL,
+    so we'll mock up a number of functions.
+    """
+    if not has_felis:
+        pytest.skip("Felis is not installed in the environment.")
+
+    def mock_environment(connection):
+        return {'PGUSER': 'mock', 'PGPASSWORD': 'mock', 'PGHOST': 'mock', 'PGDATABASE': 'mock'}
+
+    monkeypatch.setattr('dlairflow.meta._connection_to_environment', mock_environment)
+
+    def mock_create_metadata(FILE, id_generation=False):
+        return FILE.read()
+
+    monkeypatch.setattr('dlairflow.meta.create_metadata', mock_create_metadata)
+    mock_create_database_context_value = MagicMock()
+    mock_create_database_context_value.engine = 'foo'
+    mock_create_database_context_manager = MagicMock()
+    mock_create_database_context_manager.__enter__.return_value = mock_create_database_context_value
+    mock_create_database_context = MagicMock(return_value=mock_create_database_context_manager)
+    monkeypatch.setattr('dlairflow.meta.create_database_context', mock_create_database_context)
+
+    def mock_DatabaseDiff(schema, engine):
+        return 'foo'
+
+    monkeypatch.setattr('dlairflow.meta.DatabaseDiff', mock_DatabaseDiff)
+    p = import_module('..meta', package='dlairflow.test')
+    validate_database = p.__dict__['validate_database']
+    diff = validate_database(temporary_felis_file, 'connection')
+    assert diff == 'foo'

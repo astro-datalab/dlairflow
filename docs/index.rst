@@ -84,6 +84,16 @@ fitsverify_ checks FITS_ files for compliance with the `FITS Standard`_.
 :command:`fitsverify` requires a C compiler and the cfitsio_ library.
 Once compiled, ensure that :command:`fitsverify` is present in :envvar:`PATH`.
 
+STILTS
+~~~~~~
+
+STILTS_ can manipulate FITS_ files in a variety of ways, such as expanding
+array-valued columns into individual, scalar columns, or adding galactic
+or other coordinates. STILTS_ is packaged as a Java Archive (``.jar``) file and
+requires a Java runtime. A command-line script :command:`stilts` should be
+installed in :envvar:`PATH`; it finds and invokes the Java runtime on the
+``.jar`` file.
+
 Environment Variables
 ---------------------
 
@@ -107,3 +117,4 @@ Environment Variables
 .. _MySQL: https://www.mysql.com
 .. _SQLite: https://www.sqlite.org/index.html
 .. _README: https://github.com/astro-datalab/fits2db/blob/master/README.md
+.. _STILTS: https://www.star.bris.ac.uk/~mbt/stilts/
