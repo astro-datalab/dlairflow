@@ -2,6 +2,12 @@
 dlairflow Change Log
 ====================
 
+0.1.9 (unreleased)
+------------------
+
+*Planned* modify functions that return operators to allow access to
+parameters passed to a DAG at trigger time or parameters passed via XCom.
+
 0.1.8 (2026-07-15)
 ------------------
 
