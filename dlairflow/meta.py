@@ -91,12 +91,14 @@ def fitsverify(filename):
     if isinstance(filename, tuple):
         fitsverify_template = "fitsverify -l {{{{ ti.xcom_pull(task_ids='{0}', key='{1}') }}}}".format(*filename)
         return BashOperator(task_id='fitsverify',
-                            bash_command=fitsverify_template)
+                            bash_command=fitsverify_template,
+                            do_xcom_push=False)
     else:
         fitsverify_template = "fitsverify -l {{ params.filename }}"
         return BashOperator(task_id='fitsverify',
                             bash_command=fitsverify_template,
-                            params={'filename': filename})
+                            params={'filename': filename},
+                            do_xcom_push=False)
 
 
 def get(source, item):
