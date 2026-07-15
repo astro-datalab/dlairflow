@@ -77,18 +77,26 @@ def fitsverify(filename):
 
     Parameters
     ----------
-    filename : :class:`str`
-        Name of a FITS file to verify.
+    filename : :class:`str` or :class:`tuple`
+        Name of a FITS file to verify. A :class:`str` will be interpreted
+        as a plain filename. A :class:`tuple` will be interpreted as a
+        value stored as an XCom; the first value is the task id and the
+        second value is the key pushed by the task.
 
     Returns
     -------
     :class:`~airflow.providers.standard.operators.bash.BashOperator`
         A BashOperator that will execute :command:`fitsverify`.
     """
-    fitsverify_template = "fitsverify -l {{params.filename}}"
-    return BashOperator(task_id='fitsverify',
-                        bash_command=fitsverify_template,
-                        params={'filename': filename})
+    if isinstance(filename, tuple):
+        fitsverify_template = f"fitsverify -l {{{{ ti.xcom_pull(task_ids='{filename[0]}', key='{filename[1]}') }}}}"
+        return BashOperator(task_id='fitsverify',
+                            bash_command=fitsverify_template)
+    else:
+        fitsverify_template = "fitsverify -l {{ params.filename }}"
+        return BashOperator(task_id='fitsverify',
+                            bash_command=fitsverify_template,
+                            params={'filename': filename})
 
 
 def get(source, item):
