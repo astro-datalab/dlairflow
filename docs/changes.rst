@@ -2,10 +2,12 @@
 dlairflow Change Log
 ====================
 
-0.1.8 (unreleased)
+0.1.8 (2026-07-15)
 ------------------
 
-* No changes yet.
+* Add validation methods to :mod:`dlairflow.meta` (PR `#20`_).
+
+.. _`#20`: https://github.com/astro-datalab/dlairflow/pull/20
 
 0.1.7 (2026-03-05)
 ------------------
