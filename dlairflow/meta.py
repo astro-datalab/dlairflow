@@ -89,7 +89,7 @@ def fitsverify(filename):
         A BashOperator that will execute :command:`fitsverify`.
     """
     if isinstance(filename, tuple):
-        fitsverify_template = f"fitsverify -l {{{{ ti.xcom_pull(task_ids='{filename[0]}', key='{filename[1]}') }}}}"
+        fitsverify_template = "fitsverify -l {{{{ ti.xcom_pull(task_ids='{0}', key='{1}') }}}}".format(*filename)
         return BashOperator(task_id='fitsverify',
                             bash_command=fitsverify_template)
     else:

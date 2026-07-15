@@ -246,7 +246,8 @@ def mock_postgres(monkeypatch):
     monkeypatch.setattr('dlairflow.meta.PostgresHook', MockHook)
 
 
-@pytest.mark.parametrize('task_function,filename', [('fitsverify', 'filename.fits'),])
+@pytest.mark.parametrize('task_function,filename', [('fitsverify', 'filename.fits'),
+                                                    ('fitsverify', ('task_name', 'filename_key'))])
 def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F811
     """Test the fitsverify task.
     """
@@ -264,7 +265,11 @@ def test_fitsverify(temporary_airflow_home, task_function, filename):  # noqa: F
     test_operator = tf(filename)
 
     assert isinstance(test_operator, BashOperator)
-    assert test_operator.params['filename'] == 'filename.fits'
+    if isinstance(filename, tuple):
+        assert test_operator.bash_command == ("fitsverify -l {{ ti.xcom_pull(task_ids='task_name', " +
+                                              "key='filename_key') }}")
+    else:
+        assert test_operator.params['filename'] == filename
 
 
 @pytest.mark.parametrize('test_source,item', [('felis.yaml', 'name1'),
