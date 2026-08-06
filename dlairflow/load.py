@@ -42,7 +42,7 @@ def load_table_with_fits2db(connection, schema, table, load_dir):
     :class:`~airflow.providers.standard.operators.bash.BashOperator`
         A BashOperator that will execute :command:`fits2db`.
     """
-    load_table_template = ("set -e; fits2db -t {{ params.my_schema }}.{{ params.my_table }} " +
+    load_table_template = ("set -o pipefail; fits2db -t {{ params.my_schema }}.{{ params.my_table }} " +
                            "{{ params.load_dir }}/{{ params.my_schema }}.{{ params.my_table }}.fits " +
                            "| psql")
     pg_env = _connection_to_environment(connection)
