@@ -244,7 +244,7 @@ def primary_key(connection, schema, primary_keys, tablespace=None, overwrite=Fal
     schema : :class:`str`
         The name of the database schema.
     primary_keys : :class:`dict`
-        A dictionary containing the of the table in `schema` mapped to the
+        A dictionary containing the name of the table in `schema` mapped to the
         primary key column(s). See below for details.
     tablespace : :class:`str`, optional
         Create the indexes in a specific tablespace if set.
