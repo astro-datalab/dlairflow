@@ -49,16 +49,16 @@ def load_table_with_fits2db(connection, schema, table, load_dir):
     don't work.
     """
     load_table_template = ("set -eo pipefail; [[ -f {{ params.load_dir }}/" +
-                           "{{ params.my_schema }}.{{ params.my_table }}.fits ]] && " +
-                           "fits2db -t {{ params.my_schema }}.{{ params.my_table }} " +
-                           "{{ params.load_dir }}/{{ params.my_schema }}.{{ params.my_table }}.fits " +
+                           "{{ params.schema }}.{{ params.table }}.fits ]] && " +
+                           "fits2db -t {{ params.schema }}.{{ params.table }} " +
+                           "{{ params.load_dir }}/{{ params.schema }}.{{ params.table }}.fits " +
                            "| psql")
     pg_env = _connection_to_environment(connection)
     load_table = BashOperator(task_id='load_table_with_fits2db',
                               bash_command=load_table_template,
                               params={'load_dir': load_dir,
-                                      'my_schema': schema,
-                                      'my_table': table},
+                                      'schema': schema,
+                                      'table': table},
                               env=pg_env,
                               append_env=True,
                               do_xcom_push=False)

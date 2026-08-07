@@ -315,6 +315,7 @@ def validate_schema_file_task(*args, **kwargs):
         filename = kwargs['task_instance'].xcom_pull(task_ids=args[0][0], key=args[0][1])
     else:
         filename = args[0]
+    log.info(filename)
     cleaned_kwargs = dict()
     for k in ('check_description', 'check_redundant_datatypes',
               'check_tap_table_indexes', 'check_tap_principal'):
