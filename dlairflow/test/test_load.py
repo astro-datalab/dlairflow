@@ -7,8 +7,9 @@ from importlib import import_module
 from .test_postgresql import MockConnection, temporary_airflow_home  # noqa: F401
 
 
-@pytest.mark.parametrize('task_function,connection,schema,table,load_dir', [('load_table_with_fits2db', 'connection_string', 'schema', 'table', 'load_dir'),
-                                                                            ('load_table_with_fits2db', 'params.connection', None, None, None),])
+@pytest.mark.parametrize('task_function,connection,schema,table,load_dir',
+                         [('load_table_with_fits2db', 'connection_string', 'schema', 'table', 'load_dir'),
+                          ('load_table_with_fits2db', 'params.connection', None, None, None),])
 def test_load_table(monkeypatch, temporary_airflow_home, task_function, connection, schema, table, load_dir):  # noqa: F811
     """Test various loading functions.
     """

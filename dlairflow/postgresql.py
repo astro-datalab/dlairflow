@@ -7,10 +7,6 @@ dlairflow.postgresql
 Standard tasks for working with PostgreSQL that can be imported into a DAG.
 """
 import os
-try:
-    from airflow.sdk.bases.hook import BaseHook
-except ImportError:
-    from airflow.hooks.base import BaseHook
 from .util import ensure_sql
 # _legacy_bash = False
 try:
