@@ -32,6 +32,7 @@ def test_load_table(temporary_airflow_home, task_function, connection, schema, t
     else:
         assert test_operator.env['PGHOST'] == '{{ conn.get(params.connection).host }}'
     if schema is None:
-        assert test_operator.env['FITS2DB_FILE'] == '{{ params.load_dir }}/{{ params.schema }}.{{ params.table }}.fits'
+        assert test_operator.env['FITS2DB_FILE'] == ('{{ params.load_dir }}/' +
+                                                     '{{ params.schema }}.{{ params.table }}.fits')
     else:
         assert test_operator.env['FITS2DB_FILE'] == 'load_dir/schema.table.fits'
