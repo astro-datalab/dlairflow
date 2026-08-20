@@ -90,10 +90,10 @@ def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump
     p = import_module('..postgresql', package='dlairflow.test')
 
     tf = p.__dict__[task_function]
-    test_operator = tf("login,password,host,schema", "dump_schema", dump_dir)
+    test_operator = tf("connection_name", "dump_schema", dump_dir)
 
     assert isinstance(test_operator, BashOperator)
-    assert test_operator.env['PGHOST'] == 'host'
+    assert test_operator.env['PGHOST'] == '{{ conn.get("connection_name").host }}'
     assert test_operator.params['schema'] == 'dump_schema'
     if dump_dir is None:
         assert test_operator.params['dump_dir'] == '/data0/datalab/' + os.environ['USER']
