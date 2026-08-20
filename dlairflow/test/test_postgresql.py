@@ -284,12 +284,13 @@ ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
     assert tmpl.render(params=test_operator.params) == expected_render
 
 
-@pytest.mark.parametrize('tables,restart,cascade,overwrite', [('table1', False, False, True),
-                                                              (['table1', 'table2'], True, False, False),
-                                                              (['table1', 'table2'], False, True, False),
-                                                              (['table1', 'table2'], True, True, False),
-                                                              (False, False, False, False)])
-def test_truncate_table(temporary_airflow_home, tables, restart, cascade, overwrite):
+@pytest.mark.parametrize('schema,tables,restart,cascade', [('schema_name', 'table1', False, False),
+                                                           (None, None, False, False),
+                                                           (None, ['table1', 'table2'], True, False),
+                                                           ('schema_name', ['table1', 'table2'], False, True),
+                                                           (None, ['table1', 'table2'], True, True),
+                                                           (None, False, False, False)])
+def test_truncate_table(temporary_airflow_home, schema, tables, restart, cascade):
     """Test the truncate_table function.
     """
     #
@@ -303,36 +304,38 @@ def test_truncate_table(temporary_airflow_home, tables, restart, cascade, overwr
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'truncate_table'
     tf = p.__dict__[function_name]
-    if tables:
-        test_operator = tf("login,password,host,schema", 'test_schema', tables,
-                           restart=restart, cascade=cascade, overwrite=overwrite)
+    if tables or tables is None:
+        test_operator = tf("login,password,host,schema", schema, tables,
+                           restart=restart, cascade=cascade)
         assert isinstance(test_operator, PostgresOperator)
-        assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                                  f'dlairflow.postgresql.{function_name}.sql'))
         assert test_operator.task_id == function_name
-        assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
-        env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
-                          keep_trailing_newline=True)
-        tmpl = env.get_template(test_operator.sql)
-        if isinstance(tables, list):
-            st = ', '.join(['test_schema.' + t for t in tables])
+        # assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
+        # env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
+        #                   keep_trailing_newline=True)
+        # tmpl = env.get_template(test_operator.sql)
+        if schema is None:
+            schema_name = '{{ params.schema }}'
         else:
-            st = 'test_schema.' + tables
+            schema_name = schema
+        if isinstance(tables, list):
+            st = ', '.join([f"{schema_name}.{t}" for t in tables])
+        elif tables is None:
+            st = f"{schema_name}.{{{{ params.table }}}}"
+        else:
+            st = f"{schema_name}.{tables}"
         expected_render = """--
 -- Created by dlairflow.postgresql.{0}().
--- Call {0}(..., overwrite=True) to replace this file.
 --
-TRUNCATE TABLE {1}
-    {2} IDENTITY
-    {3};
-""".format(function_name, st,
-           'RESTART' if restart else 'CONTINUE',
-           'CASCADE' if cascade else 'RESTRICT')
-        assert tmpl.render(params=test_operator.params) == expected_render
+TRUNCATE TABLE
+    {1}
+    {{% if params._tt_restart -%}}RESTART{{%- else -%}}CONTINUE{{%- endif %}} IDENTITY
+    {{% if params._tt_cascade -%}}CASCADE{{%- else -%}}RESTRICT{{%- endif %}};
+""".format(function_name, st)
+        assert test_operator.sql == expected_render
     else:
         with pytest.raises(ValueError) as excinfo:
             test_operator = tf("login,password,host,schema", 'test_schema', tables,
-                               restart=restart, cascade=cascade, overwrite=overwrite)
+                               restart=restart, cascade=cascade)
         assert excinfo.value.args[0] == "Unknown type for table, must be string or list-like!"
 
 

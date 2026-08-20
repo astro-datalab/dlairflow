@@ -296,17 +296,21 @@ ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('"
                                     task_id="primary_key")
 
 
-def truncate_table(connection, schema, table, restart=False, cascade=False,
-                   overwrite=False):
+def truncate_table(connection, schema=None, table=None, restart=False, cascade=False):
     """Run ``TRUNCATE TABLE`` on one or more tables in `schema`.
+
+    Any undefined keyword arguments are assumed to be runtime DAG parameters,
+    accessed via *e.g.*::
+
+        {{ params.schema }}.{{ params.table }}
 
     Parameters
     ----------
     connection : :class:`str`
         An Airflow database connection string.
-    schema : :class:`str`
+    schema : :class:`str`, optional
         The name of the database schema.
-    table : :class:`str` or :class:`list`
+    table : :class:`str` or :class:`list`, optional
         The table(s) to operate on.
     restart : :class:`bool`, optional
         If ``True``, any sequences associated with columns in the table(s) will
@@ -314,8 +318,6 @@ def truncate_table(connection, schema, table, restart=False, cascade=False,
     cascade : :class:`bool`, optional
         If ``True``, the ``TRUNCATE`` command will also truncate tables connected
         by foreign key relationships. *This is extrememly dangerous!*
-    overwrite : :class:`bool`, optional
-        If ``True``, replace any existing SQL template file.
 
     Returns
     -------
@@ -326,35 +328,31 @@ def truncate_table(connection, schema, table, restart=False, cascade=False,
     ------
     :exc:`ValueError`
         If `table` is not a string or list-like object.
-
     """
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema is None:
+        schema = '{{ params.schema }}'
+    if table is None:
+        table = '{{ params.table }}'
     if isinstance(table, str):
         tables = [table]
     elif isinstance(table, (list, tuple, set, frozenset)):
         tables = table
     else:
         raise ValueError("Unknown type for table, must be string or list-like!")
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.truncate_table.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    schema_tables = ", ".join([f"{schema}.{t}" for t in tables])
+    sql_template = f"""--
 -- Created by dlairflow.postgresql.truncate_table().
--- Call truncate_table(..., overwrite=True) to replace this file.
 --
-TRUNCATE TABLE {% for table in params.tables -%}
-    {{ params.schema }}.{{ table }}{{ '' if loop.last else ', ' }}
-    {%- endfor %}
-    {% if params.restart -%}RESTART{%- else -%}CONTINUE{%- endif %} IDENTITY
-    {% if params.cascade -%}CASCADE{%- else -%}RESTRICT{%- endif %};
+TRUNCATE TABLE
+    {schema_tables}
+    {{% if params._tt_restart -%}}RESTART{{%- else -%}}CONTINUE{{%- endif %}} IDENTITY
+    {{% if params._tt_cascade -%}}CASCADE{{%- else -%}}RESTRICT{{%- endif %}};
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema,
-                                            'tables': tables,
-                                            'restart': restart,
-                                            'cascade': cascade},
+    return _PostgresOperatorWrapper(sql=sql_template,
+                                    params={'_tt_restart': restart,
+                                            '_tt_cascade': cascade},
                                     conn_id=connection,
                                     task_id="truncate_table")
 
