@@ -48,13 +48,6 @@ def test__PostgresOperatorWrapper(monkeypatch):
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
-
     p = import_module('..postgresql', package='dlairflow.test')
 
     def return_kwargs(**kwargs):
@@ -70,22 +63,16 @@ def test__PostgresOperatorWrapper(monkeypatch):
 
 @pytest.mark.parametrize('task_function,dump_dir', [('pg_dump_schema', 'dump_dir'),
                                                     ('pg_restore_schema', 'dump_dir')])
-def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump_dir):
+def test_pg_dump_schema(temporary_airflow_home, task_function, dump_dir):
     """Test pg_dump and pg_restore tasks in various combinations.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.standard.operators.bash import BashOperator
     except ImportError:
         from airflow.operators.bash import BashOperator
-
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
     p = import_module('..postgresql', package='dlairflow.test')
 
@@ -103,22 +90,16 @@ def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump
 
 @pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
                                                   (False, 'data3'), (True, 'data3')])
-def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite, tablespace):
+def test_q3c_index(temporary_airflow_home, overwrite, tablespace):
     """Test the q3c_index function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
-
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'q3c_index'
@@ -158,22 +139,16 @@ CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
 
 @pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
                                                   (False, 'data3'), (True, 'data3')])
-def test_index_columns(monkeypatch, temporary_airflow_home, overwrite, tablespace):
+def test_index_columns(temporary_airflow_home, overwrite, tablespace):
     """Test the index_columns function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
-
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'index_columns'
@@ -249,22 +224,16 @@ CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
 
 @pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
                                                   (False, 'data3'), (True, 'data3')])
-def test_primary_key(monkeypatch, temporary_airflow_home, overwrite, tablespace):
+def test_primary_key(temporary_airflow_home, overwrite, tablespace):
     """Test the primary_key function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
-
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'primary_key'
@@ -320,22 +289,16 @@ ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
                                                               (['table1', 'table2'], False, True, False),
                                                               (['table1', 'table2'], True, True, False),
                                                               (False, False, False, False)])
-def test_truncate_table(monkeypatch, temporary_airflow_home, tables, restart, cascade, overwrite):
+def test_truncate_table(temporary_airflow_home, tables, restart, cascade, overwrite):
     """Test the truncate_table function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
-
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'truncate_table'
@@ -376,22 +339,16 @@ TRUNCATE TABLE {1}
 @pytest.mark.parametrize('tables,full,overwrite', [('table1', False, False),
                                                    (['table1', 'table2'], True, True),
                                                    (False, False, False)])
-def test_vacuum_analyze(monkeypatch, temporary_airflow_home, tables, full, overwrite):
+def test_vacuum_analyze(temporary_airflow_home, tables, full, overwrite):
     """Test the vacuum_analyze function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
-
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
 
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'vacuum_analyze'
