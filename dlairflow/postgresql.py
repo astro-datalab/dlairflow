@@ -40,11 +40,14 @@ def _connection_to_environment(connection):
         A dictionary suitable for passing to the ``env`` keyword on, *e.g.*
         :class:`~airflow.providers.standard.operators.bash.BashOperator`.
     """
-    conn = BaseHook.get_connection(connection)
-    env = {'PGUSER': conn.login,
-           'PGPASSWORD': conn.password,
-           'PGHOST': conn.host,
-           'PGDATABASE': conn.schema}
+    if connection.startswith('params.'):
+        conn_name = connection
+    else:
+        conn_name = f'"{connection}"'
+    env = {'PGUSER': f'{{{{ conn.get({conn_name}).login }}}}',
+           'PGPASSWORD': f'{{{{ conn.get({conn_name}).password }}}}',
+           'PGHOST': f'{{{{ conn.get({conn_name}).host }}}}',
+           'PGDATABASE': f'{{{{ conn.get({conn_name}).schema }}}}'}
     return env
 
 

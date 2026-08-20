@@ -7,8 +7,9 @@ from importlib import import_module
 from .test_postgresql import MockConnection, temporary_airflow_home  # noqa: F401
 
 
-@pytest.mark.parametrize('task_function,load_dir', [('load_table_with_fits2db', 'load_dir'),])
-def test_load_table(monkeypatch, temporary_airflow_home, task_function, load_dir):  # noqa: F811
+@pytest.mark.parametrize('task_function,connection,schema,table,load_dir', [('load_table_with_fits2db', 'connection_string', 'schema', 'table', 'load_dir'),
+                                                                            ('load_table_with_fits2db', 'params.connection', None, None, None),])
+def test_load_table(monkeypatch, temporary_airflow_home, task_function, connection, schema, table, load_dir):  # noqa: F811
     """Test various loading functions.
     """
     def mock_connection(connection):
@@ -32,9 +33,14 @@ def test_load_table(monkeypatch, temporary_airflow_home, task_function, load_dir
     p = import_module('..load', package='dlairflow.test')
 
     tf = p.__dict__[task_function]
-    test_operator = tf("login,password,host,schema", "schema", "table", load_dir)
+    test_operator = tf(connection, schema, table, load_dir)
 
     assert isinstance(test_operator, BashOperator)
-    assert test_operator.env['PGHOST'] == 'host'
-    assert test_operator.params['schema'] == 'schema'
-    assert test_operator.params['load_dir'] == 'load_dir'
+    if connection == 'connection_string':
+        assert test_operator.env['PGHOST'] == '{{ conn.get("connection_string").host }}'
+    else:
+        assert test_operator.env['PGHOST'] == '{{ conn.get(params.connection).host }}'
+    if schema is None:
+        assert test_operator.env['FITS2DB_FILE'] == '{{ params.load_dir }}/{{ params.schema }}.{{ params.table} }.fits'
+    else:
+        assert test_operator.env['FITS2DB_FILE'] == 'load_dir/schema.table.fits'
