@@ -357,21 +357,24 @@ TRUNCATE TABLE
                                     task_id="truncate_table")
 
 
-def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
+def vacuum_analyze(connection, schema=None, table=None, full=False):
     """Run ``VACUUM`` and ``ANALYZE`` on one or more tables in `schema`.
+
+    Any undefined keyword arguments are assumed to be runtime DAG parameters,
+    accessed via *e.g.*::
+
+        {{ params.schema }}.{{ params.table }}
 
     Parameters
     ----------
     connection : :class:`str`
         An Airflow database connection string.
-    schema : :class:`str`
+    schema : :class:`str`, optional
         The name of the database schema.
-    table : :class:`str` or :class:`list`
+    table : :class:`str` or :class:`list`, optional
         The table(s) to operate on.
     full : :class:`bool`, optional
         If ``True``, run ``VACUUM FULL``.
-    overwrite : :class:`bool`, optional
-        If ``True`` replace any existing SQL template file.
 
     Returns
     -------
@@ -390,30 +393,37 @@ def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
     transaction block. Normally a transaction block is a good thing, but ``VACUUM``
     cannot be run in a transaction block.
     """
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema is None:
+        schema = '{{ params.schema }}'
+    if table is None:
+        table = '{{ params.table }}'
     if isinstance(table, str):
         tables = [table]
     elif isinstance(table, (list, tuple, set, frozenset)):
         tables = table
     else:
         raise ValueError("Unknown type for table, must be string or list-like!")
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.vacuum_analyze.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    _va_params = {'_va_full': full}
+    if table == '{{ params.table }}':
+        sql_template = f"""--
 -- Created by dlairflow.postgresql.vacuum_analyze().
--- Call vacuum_analyze(..., overwrite=True) to replace this file.
 --
-{% for table in params.tables %}
-VACUUM {% if params.full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params.schema }}.{{ table }};
+VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema}.{table};
+"""
+    else:
+        _va_params['_va_schema'] = schema
+        _va_params['_va_tables'] = tables
+        sql_template = """--
+-- Created by dlairflow.postgresql.vacuum_analyze().
+--
+{% for table in params._va_tables %}
+VACUUM {% if params._va_full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params._va_schema }}.{{ table }};
 {% endfor %}
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
+    return _PostgresOperatorWrapper(sql=sql_template,
                                     autocommit=True,
-                                    params={'schema': schema,
-                                            'tables': tables,
-                                            'full': full},
+                                    params=_va_params,
                                     conn_id=connection,
                                     task_id="vacuum_analyze")
