@@ -222,9 +222,13 @@ CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
     assert tmpl.render(params=test_operator.params) == expected_render
 
 
-@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
-                                                  (False, 'data3'), (True, 'data3')])
-def test_primary_key(temporary_airflow_home, overwrite, tablespace):
+@pytest.mark.parametrize('keys,schema,tablespace', [({'params.table': 'pk'}, None, None),
+                                                    ({'table1': 'pk'}, 'schema1', None),
+                                                    ({'params.table': 'pk'}, None, 'data3'),
+                                                    ({'table1': 'pk'}, 'schema1', 'data3'),
+                                                    ({'params.table': 'pk'}, None, 'params.index_tablespace'),
+                                                    ({'table1': 'pk'}, 'schema1', 'params.index_tablespace')])
+def test_primary_key(temporary_airflow_home, keys, schema, tablespace):
     """Test the primary_key function.
     """
     #
@@ -238,50 +242,54 @@ def test_primary_key(temporary_airflow_home, overwrite, tablespace):
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'primary_key'
     tf = p.__dict__[function_name]
-    test_operator = tf("login,password,host,schema", 'test_schema',
-                       {"table1": "column1",
-                        "table2": ("column1", "column2"),
-                        "table3": 12345},
-                       tablespace=tablespace, overwrite=overwrite)
+    test_operator = tf("login,password,host,schema",
+                       keys,
+                       schema=schema,
+                       tablespace=tablespace)
     assert isinstance(test_operator, PostgresOperator)
-    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                              f'dlairflow.postgresql.{function_name}.sql'))
     assert test_operator.task_id == function_name
-    assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
-    env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
-                      keep_trailing_newline=True)
-    tmpl = env.get_template(test_operator.sql)
+    if schema is None:
+        schema_name = '{{ params.schema }}'
+    else:
+        schema_name = schema
     if tablespace:
+        if tablespace.startswith('params.'):
+            if_tablespace = if_tablespace = f"{{%- if {tablespace} %}} USING INDEX TABLESPACE {{{{ {tablespace} }}}}{{%- endif -%}}"
+        else:
+            if_tablespace = "{%- if params._pk_tablespace %} USING INDEX TABLESPACE {{ params._pk_tablespace }}{%- endif -%}"
+    else:
+        if_tablespace = ''
+    if 'params.table' in keys:
         expected_render = f"""--
 -- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
 --
-
-ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
-    WITH (fillfactor=100) USING INDEX TABLESPACE {tablespace};
-
-ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
-    WITH (fillfactor=100) USING INDEX TABLESPACE {tablespace};
-
--- Unknown type: 12345.
-
+{{% if params._pk_columns is string -%}}
+ALTER TABLE {schema_name}.{{{{ params.table }}}} ADD PRIMARY KEY ("{{{{ params._pk_columns }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif params._pk_columns is sequence -%}}
+ALTER TABLE {schema_name}.{{{{ params.table }}}} ADD PRIMARY KEY ("{{{{ params._pk_columns|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ params._pk_columns }}}}.
+{{% endif -%}}
 """
     else:
         expected_render = f"""--
 -- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
 --
-
-ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
-    WITH (fillfactor=100);
-
-ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
-    WITH (fillfactor=100);
-
--- Unknown type: 12345.
-
+{{% for table, columns in params._pk_primary_keys.items() %}}
+{{% if columns is string -%}}
+ALTER TABLE {schema_name}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif columns is sequence -%}}
+ALTER TABLE {schema_name}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ columns }}}}.
+{{% endif -%}}
+{{% endfor %}}
 """
-    assert tmpl.render(params=test_operator.params) == expected_render
+    assert test_operator.sql == expected_render
 
 
 @pytest.mark.parametrize('schema,tables,restart,cascade', [('schema_name', 'table1', False, False),

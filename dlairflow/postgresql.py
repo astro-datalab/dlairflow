@@ -233,22 +233,25 @@ CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
                                     task_id="index_columns")
 
 
-def primary_key(connection, schema, primary_keys, tablespace=None, overwrite=False):
+def primary_key(connection, primary_keys, schema=None, tablespace=None):
     """Create a primary key on one or more tables in `schema`.
+
+    Any undefined keyword arguments are assumed to be runtime DAG parameters,
+    accessed via *e.g.*::
+
+        {{ params.schema }}.{{ params.table }}
 
     Parameters
     ----------
     connection : :class:`str`
         An Airflow database connection string.
-    schema : :class:`str`
-        The name of the database schema.
     primary_keys : :class:`dict`
         A dictionary containing the name of the table in `schema` mapped to the
         primary key column(s). See below for details.
+    schema : :class:`str`, optional
+        The name of the database schema.
     tablespace : :class:`str`, optional
         Create the indexes in a specific tablespace if set.
-    overwrite : :class:`bool`, optional
-        If ``True`` replace any existing SQL template file.
 
     Returns
     -------
@@ -266,32 +269,54 @@ def primary_key(connection, schema, primary_keys, tablespace=None, overwrite=Fal
       - :class:`tuple`: create a primary key on the set of columns in the tuple.
       - Any other type will be ignored.
     """
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.primary_key.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema is None:
+        schema = '{{ params.schema }}'
+    _pk_params = dict()
+    if tablespace is None:
+        if_tablespace = ''
+    else:
+        if tablespace.startswith('params.'):
+            if_tablespace = f"{{%- if {tablespace} %}} USING INDEX TABLESPACE {{{{ {tablespace} }}}}{{%- endif -%}}"
+        else:
+            if_tablespace = "{%- if params._pk_tablespace %} USING INDEX TABLESPACE {{ params._pk_tablespace }}{%- endif -%}"
+            _pk_params['_pk_tablespace'] = tablespace
+    table_names = list(primary_keys.keys())
+    if len(table_names) == 1 and table_names[0].startswith('params.'):
+        _pk_params['_pk_columns'] = primary_keys[table_names[0]]
+        sql_template = f"""--
 -- Created by dlairflow.postgresql.primary_key().
--- Call primary_key(..., overwrite=True) to replace this file.
 --
-{% for table, columns in params.primary_keys.items() %}
-{% if columns is string -%}
-ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns }}")
-    WITH (fillfactor=100){%- if params.tablespace %} USING INDEX TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% elif columns is sequence -%}
-ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('", "') }}")
-    WITH (fillfactor=100){%- if params.tablespace %} USING INDEX TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% else -%}
--- Unknown type: {{ columns }}.
-{% endif -%}
-{% endfor %}
+{{% if params._pk_columns is string -%}}
+ALTER TABLE {schema}.{{{{ {table_names[0]} }}}} ADD PRIMARY KEY ("{{{{ params._pk_columns }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif params._pk_columns is sequence -%}}
+ALTER TABLE {schema}.{{{{ {table_names[0]} }}}} ADD PRIMARY KEY ("{{{{ params._pk_columns|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ params._pk_columns }}}}.
+{{% endif -%}}
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema,
-                                            'primary_keys': primary_keys,
-                                            'tablespace': tablespace},
+    else:
+        _pk_params['_pk_primary_keys'] = primary_keys
+        sql_template = f"""--
+-- Created by dlairflow.postgresql.primary_key().
+--
+{{% for table, columns in params._pk_primary_keys.items() %}}
+{{% if columns is string -%}}
+ALTER TABLE {schema}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif columns is sequence -%}}
+ALTER TABLE {schema}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ columns }}}}.
+{{% endif -%}}
+{{% endfor %}}
+"""
+    return _PostgresOperatorWrapper(sql=sql_template,
+                                    params=_pk_params,
                                     conn_id=connection,
                                     task_id="primary_key")
 
