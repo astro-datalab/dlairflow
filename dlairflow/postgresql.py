@@ -278,7 +278,7 @@ def primary_key(connection, primary_keys, schema=None, tablespace=None):
         if_tablespace = ''
     else:
         if tablespace.startswith('params.'):
-            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE" +
+            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
                              f"{{{{ {tablespace} }}}}{{%- endif -%}}")
         else:
             if_tablespace = ("{%- if params._pk_tablespace %} USING INDEX " +
