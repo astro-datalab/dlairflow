@@ -254,9 +254,11 @@ def test_primary_key(temporary_airflow_home, keys, schema, tablespace):
         schema_name = schema
     if tablespace:
         if tablespace.startswith('params.'):
-            if_tablespace = if_tablespace = f"{{%- if {tablespace} %}} USING INDEX TABLESPACE {{{{ {tablespace} }}}}{{%- endif -%}}"
+            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE" +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
         else:
-            if_tablespace = "{%- if params._pk_tablespace %} USING INDEX TABLESPACE {{ params._pk_tablespace }}{%- endif -%}"
+            if_tablespace = ("{%- if params._pk_tablespace %} USING INDEX " +
+                             "TABLESPACE {{ params._pk_tablespace }}{%- endif -%}")
     else:
         if_tablespace = ''
     if 'params.table' in keys:
