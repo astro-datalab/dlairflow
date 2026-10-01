@@ -6,8 +6,6 @@ dlairflow.postgresql
 
 Standard tasks for working with PostgreSQL that can be imported into a DAG.
 """
-import os
-from .util import ensure_sql
 # _legacy_bash = False
 try:
     from airflow.providers.standard.operators.bash import BashOperator
