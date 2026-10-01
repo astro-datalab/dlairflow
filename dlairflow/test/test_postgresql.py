@@ -175,7 +175,7 @@ def test_index_columns(temporary_airflow_home, schema, table, tablespace):
     expected_render = f"""--
 -- Created by dlairflow.postgresql.{function_name}().
 --
-{{% for col in params.columns %}}
+{{% for col in params._ic_columns %}}
 {{% if col is string -%}}
 CREATE INDEX {table}_{{{{ col }}}}_idx
     ON {schema}.{table} ("{{{{ col }}}}")
