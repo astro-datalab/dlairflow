@@ -88,9 +88,11 @@ def test_pg_dump_schema(temporary_airflow_home, task_function, dump_dir):
         assert test_operator.params['dump_dir'] == 'dump_dir'
 
 
-@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
-                                                  (False, 'data3'), (True, 'data3')])
-def test_q3c_index(temporary_airflow_home, overwrite, tablespace):
+@pytest.mark.parametrize('schema,table,tablespace', [('q3c_schema', 'q3c_table', None),
+                                                     ('params.q3c_schema', 'params.q3c_table', None),
+                                                     ('q3c_schema', 'q3c_table', 'data3'),
+                                                     ('q3c_schema', 'q3c_table', 'params.index_tablespace')])
+def test_q3c_index(temporary_airflow_home, schema, table, tablespace):
     """Test the q3c_index function.
     """
     #
@@ -104,42 +106,39 @@ def test_q3c_index(temporary_airflow_home, overwrite, tablespace):
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'q3c_index'
     tf = p.__dict__[function_name]
-    test_operator = tf("login,password,host,schema", 'q3c_schema', 'q3c_table',
-                       tablespace=tablespace, overwrite=overwrite)
+    test_operator = tf("login,password,host,schema", schema, table,
+                       tablespace=tablespace)
     assert isinstance(test_operator, PostgresOperator)
-    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                              f'dlairflow.postgresql.{function_name}.sql'))
     assert test_operator.task_id == function_name
-    assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
-    env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
-                      keep_trailing_newline=True)
-    tmpl = env.get_template(test_operator.sql)
     if tablespace:
-        expected_render = f"""--
--- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
---
-CREATE INDEX q3c_table_q3c_ang2ipix
-    ON q3c_schema.q3c_table (q3c_ang2ipix("ra", "dec"))
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
-"""
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._q3c_tablespace %} USING INDEX " +
+                             "TABLESPACE {{ params._q3c_tablespace }}{%- endif -%}")
     else:
-        expected_render = f"""--
+        if_tablespace = ''
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
+    if table.startswith('params.'):
+        table = f'{{{{ {table} }}}}'
+    expected_render = f"""--
 -- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
 --
-CREATE INDEX q3c_table_q3c_ang2ipix
-    ON q3c_schema.q3c_table (q3c_ang2ipix("ra", "dec"))
-    WITH (fillfactor=100);
-CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
+CREATE INDEX {table}_q3c_ang2ipix
+    ON {schema}.{table} (q3c_ang2ipix("{{{{ params._q3c_ra }}}}", "{{{{ params._q3c_dec }}}}"))
+    WITH (fillfactor=100){if_tablespace};
+CLUSTER {table}_q3c_ang2ipix ON {schema}.{table};
 """
-    assert tmpl.render(params=test_operator.params) == expected_render
+    assert test_operator.sql == expected_render
 
 
-@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
-                                                  (False, 'data3'), (True, 'data3')])
-def test_index_columns(temporary_airflow_home, overwrite, tablespace):
+@pytest.mark.parametrize('schema,table,tablespace', [('ic_schema', 'ic_table', None),
+                                                     ('params.schema', 'params.table', None),
+                                                     ('ic_schema', 'ic_table', 'data3'),
+                                                     ('params.schema', 'params.table', 'params.index_tablespace')])
+def test_index_columns(temporary_airflow_home, schema, table, tablespace):
     """Test the index_columns function.
     """
     #
@@ -153,73 +152,51 @@ def test_index_columns(temporary_airflow_home, overwrite, tablespace):
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'index_columns'
     tf = p.__dict__[function_name]
-    test_operator = tf("login,password,host,schema", 'test_schema', 'test_table',
+    test_operator = tf("login,password,host,schema", schema, table,
                        columns=['ra', 'dec',
                                 ('id', 'survey', 'program'),
                                 12345,
                                 {'test_schema.uint64': 'specobjid'}],
-                       tablespace=tablespace, overwrite=overwrite)
+                       tablespace=tablespace)
     assert isinstance(test_operator, PostgresOperator)
-    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                              f'dlairflow.postgresql.{function_name}.sql'))
     assert test_operator.task_id == function_name
-    assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
-    env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
-                      keep_trailing_newline=True)
-    tmpl = env.get_template(test_operator.sql)
     if tablespace:
-        expected_render = f"""--
--- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
---
-
-CREATE INDEX test_table_ra_idx
-    ON test_schema.test_table ("ra")
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-
-CREATE INDEX test_table_dec_idx
-    ON test_schema.test_table ("dec")
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-
-CREATE INDEX test_table_id_survey_program_idx
-    ON test_schema.test_table ("id", "survey", "program")
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-
--- Unknown type: 12345.
-
-CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
-    ON test_schema.test_table (test_schema.uint64(specobjid))
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-
-
-"""
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._ic_tablespace %} USING INDEX " +
+                             "TABLESPACE {{ params._ic_tablespace }}{%- endif -%}")
     else:
-        expected_render = f"""--
+        if_tablespace = ''
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
+    if table.startswith('params.'):
+        table = f'{{{{ {table} }}}}'
+    expected_render = f"""--
 -- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
 --
-
-CREATE INDEX test_table_ra_idx
-    ON test_schema.test_table ("ra")
-    WITH (fillfactor=100);
-
-CREATE INDEX test_table_dec_idx
-    ON test_schema.test_table ("dec")
-    WITH (fillfactor=100);
-
-CREATE INDEX test_table_id_survey_program_idx
-    ON test_schema.test_table ("id", "survey", "program")
-    WITH (fillfactor=100);
-
--- Unknown type: 12345.
-
-CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
-    ON test_schema.test_table (test_schema.uint64(specobjid))
-    WITH (fillfactor=100);
-
-
+{{% for col in params.columns %}}
+{{% if col is string -%}}
+CREATE INDEX {table}_{{{{ col }}}}_idx
+    ON {schema}.{table} ("{{{{ col }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif col is mapping -%}}
+{{% for key, value in col.items() -%}}
+CREATE_INDEX {table}_{{{{ key|replace('.', '_') }}}}_{{{{ value }}}}_idx
+    ON {schema}.{table} ({{{{ key }}}}({{{{ value }}}}))
+    WITH (fillfactor=100){if_tablespace};
+{{% endfor %}}
+{{% elif col is sequence -%}}
+CREATE INDEX {table}_{{{{ col|join("_") }}}}_idx
+    ON {schema}.{table} ("{{{{ col|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ col }}}}.
+{{% endif -%}}
+{{% endfor %}}
 """
-    assert tmpl.render(params=test_operator.params) == expected_render
+    assert test_operator.sql == expected_render
 
 
 @pytest.mark.parametrize('keys,schema,tablespace', [({'params.table': 'pk'}, None, None),

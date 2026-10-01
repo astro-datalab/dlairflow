@@ -82,7 +82,8 @@ def pg_dump_schema(connection, schema, dump_dir):
                         params={'schema': schema,
                                 'dump_dir': dump_dir},
                         env=pg_env,
-                        append_env=True)
+                        append_env=True,
+                        do_xcom_push=False)
 
 
 def pg_restore_schema(connection, schema, dump_dir):
@@ -109,11 +110,12 @@ def pg_restore_schema(connection, schema, dump_dir):
                         params={'schema': schema,
                                 'dump_dir': dump_dir},
                         env=pg_env,
-                        append_env=True)
+                        append_env=True,
+                        do_xcom_push=False)
 
 
 def q3c_index(connection, schema, table, ra='ra', dec='dec',
-              tablespace=None, overwrite=False):
+              tablespace=None):
     """Create a q3c index on `schema`.`table`.
 
     Parameters
@@ -130,38 +132,44 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec',
         Name of the column containing Declination, default 'dec'.
     tablespace : :class:`str`, optional
         Create the index in a specific tablespace if set.
-    overwrite : :class:`bool`, optional
-        If ``True`` replace any existing SQL template file.
 
     Returns
     -------
     :class:`~airflow.providers.common.sql.operators.sql.SQLExecuteQueryOperator`
         A task to create a q3c index.
     """
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.q3c_index.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
+    if table.startswith('params.'):
+        table = f'{{{{ {table} }}}}'
+    _q3c_params = {'_q3c_ra': ra, '_q3c_dec': dec}
+    if tablespace is None:
+        if_tablespace = ''
+    else:
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._q3c_tablespace %} USING INDEX " +
+                             "TABLESPACE {{ params._q3c_tablespace }}{%- endif -%}")
+            _q3c_params['_q3c_tablespace'] = tablespace
+    sql_template = f"""--
 -- Created by dlairflow.postgresql.q3c_index().
--- Call q3c_index(..., overwrite=True) to replace this file.
 --
-CREATE INDEX {{ params.table }}_q3c_ang2ipix
-    ON {{ params.schema }}.{{ params.table }} (q3c_ang2ipix("{{ params.ra }}", "{{ params.dec }}"))
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
-CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }};
+CREATE INDEX {table}_q3c_ang2ipix
+    ON {schema}.{table} (q3c_ang2ipix("{{{{ params._q3c_ra }}}}", "{{{{ params._q3c_dec }}}}"))
+    WITH (fillfactor=100){if_tablespace};
+CLUSTER {table}_q3c_ang2ipix ON {schema}.{table};
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'table': table,
-                                            'ra': ra, 'dec': dec,
-                                            'tablespace': tablespace},
+    return _PostgresOperatorWrapper(sql=sql_template,
+                                    params=_q3c_params,
                                     conn_id=connection,
                                     task_id="q3c_index")
 
 
-def index_columns(connection, schema, table, columns, tablespace=None, overwrite=False):
+def index_columns(connection, schema, table, columns, tablespace=None):
     """Create "generic" indexes for a set of columns
 
     Parameters
@@ -177,8 +185,6 @@ def index_columns(connection, schema, table, columns, tablespace=None, overwrite
         the list of columns.
     tablespace : :class:`str`, optional
         Create the indexes in a specific tablespace if set.
-    overwrite : :class:`bool`, optional
-        If ``True`` replace any existing SQL template file.
 
     Returns
     -------
@@ -195,40 +201,48 @@ def index_columns(connection, schema, table, columns, tablespace=None, overwrite
       and the value is the column that is the argument to the function.
     * Any other type in `columns` will be ignored.
     """
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.index_columns.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
+    if table.startswith('params.'):
+        table = f'{{{{ {table} }}}}'
+    _ic_params = {'_ic_columns': columns}
+    if tablespace is None:
+        if_tablespace = ''
+    else:
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._ic_tablespace %} USING INDEX " +
+                             "TABLESPACE {{ params._ic_tablespace }}{%- endif -%}")
+            _ic_params['_ic_tablespace'] = tablespace
+    sql_template = f"""--
 -- Created by dlairflow.postgresql.index_columns().
--- Call index_columns(..., overwrite=True) to replace this file.
 --
-{% for col in params.columns %}
-{% if col is string -%}
-CREATE INDEX {{ params.table }}_{{ col }}_idx
-    ON {{ params.schema }}.{{ params.table }} ("{{ col }}")
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% elif col is mapping -%}
-{% for key, value in col.items() -%}
-CREATE_INDEX {{ params.table }}_{{ key|replace('.', '_') }}_{{ value }}_idx
-    ON {{ params.schema }}.{{ params.table }} ({{ key }}({{ value }}))
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% endfor %}
-{% elif col is sequence -%}
-CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
-    ON {{ params.schema }}.{{ params.table }} ("{{ col|join('", "') }}")
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% else -%}
--- Unknown type: {{ col }}.
-{% endif -%}
-{% endfor %}
+{{% for col in params.columns %}}
+{{% if col is string -%}}
+CREATE INDEX {table}_{{{{ col }}}}_idx
+    ON {schema}.{table} ("{{{{ col }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif col is mapping -%}}
+{{% for key, value in col.items() -%}}
+CREATE_INDEX {table}_{{{{ key|replace('.', '_') }}}}_{{{{ value }}}}_idx
+    ON {schema}.{table} ({{{{ key }}}}({{{{ value }}}}))
+    WITH (fillfactor=100){if_tablespace};
+{{% endfor %}}
+{{% elif col is sequence -%}}
+CREATE INDEX {table}_{{{{ col|join("_") }}}}_idx
+    ON {schema}.{table} ("{{{{ col|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ col }}}}.
+{{% endif -%}}
+{{% endfor %}}
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'table': table,
-                                            'columns': columns,
-                                            'tablespace': tablespace},
+    return _PostgresOperatorWrapper(sql=sql_template,
+                                    params=_ic_params,
                                     conn_id=connection,
                                     task_id="index_columns")
 
