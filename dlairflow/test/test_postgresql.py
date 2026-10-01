@@ -111,10 +111,10 @@ def test_q3c_index(temporary_airflow_home, schema, table, tablespace):
     assert test_operator.task_id == function_name
     if tablespace:
         if tablespace.startswith('params.'):
-            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+            if_tablespace = (f"{{%- if {tablespace} %}} TABLESPACE " +
                              f"{{{{ {tablespace} }}}}{{%- endif -%}}")
         else:
-            if_tablespace = ("{%- if params._q3c_tablespace %} USING INDEX " +
+            if_tablespace = ("{%- if params._q3c_tablespace %} " +
                              "TABLESPACE {{ params._q3c_tablespace }}{%- endif -%}")
     else:
         if_tablespace = ''
@@ -161,10 +161,10 @@ def test_index_columns(temporary_airflow_home, schema, table, tablespace):
     assert test_operator.task_id == function_name
     if tablespace:
         if tablespace.startswith('params.'):
-            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+            if_tablespace = (f"{{%- if {tablespace} %}} TABLESPACE " +
                              f"{{{{ {tablespace} }}}}{{%- endif -%}}")
         else:
-            if_tablespace = ("{%- if params._ic_tablespace %} USING INDEX " +
+            if_tablespace = ("{%- if params._ic_tablespace %} " +
                              "TABLESPACE {{ params._ic_tablespace }}{%- endif -%}")
     else:
         if_tablespace = ''

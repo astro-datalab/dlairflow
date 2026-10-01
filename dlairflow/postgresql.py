@@ -147,10 +147,10 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec',
         if_tablespace = ''
     else:
         if tablespace.startswith('params.'):
-            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+            if_tablespace = (f"{{%- if {tablespace} %}} TABLESPACE " +
                              f"{{{{ {tablespace} }}}}{{%- endif -%}}")
         else:
-            if_tablespace = ("{%- if params._q3c_tablespace %} USING INDEX " +
+            if_tablespace = ("{%- if params._q3c_tablespace %} " +
                              "TABLESPACE {{ params._q3c_tablespace }}{%- endif -%}")
             _q3c_params['_q3c_tablespace'] = tablespace
     sql_template = f"""--
@@ -210,10 +210,10 @@ def index_columns(connection, schema, table, columns, tablespace=None):
         if_tablespace = ''
     else:
         if tablespace.startswith('params.'):
-            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+            if_tablespace = (f"{{%- if {tablespace} %}} TABLESPACE " +
                              f"{{{{ {tablespace} }}}}{{%- endif -%}}")
         else:
-            if_tablespace = ("{%- if params._ic_tablespace %} USING INDEX " +
+            if_tablespace = ("{%- if params._ic_tablespace %} " +
                              "TABLESPACE {{ params._ic_tablespace }}{%- endif -%}")
             _ic_params['_ic_tablespace'] = tablespace
     sql_template = f"""--
