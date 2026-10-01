@@ -219,7 +219,7 @@ def index_columns(connection, schema, table, columns, tablespace=None):
     sql_template = f"""--
 -- Created by dlairflow.postgresql.index_columns().
 --
-{{% for col in params.columns %}}
+{{% for col in params._ic_columns %}}
 {{% if col is string -%}}
 CREATE INDEX {table}_{{{{ col }}}}_idx
     ON {schema}.{table} ("{{{{ col }}}}")
