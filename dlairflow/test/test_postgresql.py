@@ -105,7 +105,7 @@ def test_q3c_index(temporary_airflow_home, schema, table, tablespace):
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'q3c_index'
     tf = p.__dict__[function_name]
-    test_operator = tf("login,password,host,schema", schema, table,
+    test_operator = tf("params.db_connection", schema, table,
                        tablespace=tablespace)
     assert isinstance(test_operator, PostgresOperator)
     assert test_operator.task_id == function_name
@@ -151,7 +151,7 @@ def test_index_columns(temporary_airflow_home, schema, table, tablespace):
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'index_columns'
     tf = p.__dict__[function_name]
-    test_operator = tf("login,password,host,schema", schema, table,
+    test_operator = tf("params.db_connection", schema, table,
                        columns=['ra', 'dec',
                                 ('id', 'survey', 'program'),
                                 12345,
@@ -218,7 +218,7 @@ def test_primary_key(temporary_airflow_home, keys, schema, tablespace):
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'primary_key'
     tf = p.__dict__[function_name]
-    test_operator = tf("login,password,host,schema",
+    test_operator = tf("params.db_connection",
                        keys,
                        schema=schema,
                        tablespace=tablespace)
@@ -291,7 +291,7 @@ def test_truncate_table(temporary_airflow_home, schema, tables, restart, cascade
     function_name = 'truncate_table'
     tf = p.__dict__[function_name]
     if tables or tables is None:
-        test_operator = tf("login,password,host,schema", schema, tables,
+        test_operator = tf("params.db_connection", schema, tables,
                            restart=restart, cascade=cascade)
         assert isinstance(test_operator, PostgresOperator)
         assert test_operator.task_id == function_name
@@ -341,7 +341,7 @@ def test_vacuum_analyze(temporary_airflow_home, schema, tables, full):
     function_name = 'vacuum_analyze'
     tf = p.__dict__[function_name]
     if tables or tables is None:
-        test_operator = tf("login,password,host,schema", schema=schema, table=tables,
+        test_operator = tf("params.db_connection", schema=schema, table=tables,
                            full=full)
         assert isinstance(test_operator, PostgresOperator)
         assert test_operator.task_id == function_name
