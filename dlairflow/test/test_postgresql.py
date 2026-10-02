@@ -5,7 +5,6 @@
 import os
 import pytest
 from importlib import import_module
-from jinja2 import Environment, FileSystemLoader
 
 
 class MockConnection(object):
@@ -48,13 +47,6 @@ def test__PostgresOperatorWrapper(monkeypatch):
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
-    try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
-
     p = import_module('..postgresql', package='dlairflow.test')
 
     def return_kwargs(**kwargs):
@@ -70,30 +62,24 @@ def test__PostgresOperatorWrapper(monkeypatch):
 
 @pytest.mark.parametrize('task_function,dump_dir', [('pg_dump_schema', 'dump_dir'),
                                                     ('pg_restore_schema', 'dump_dir')])
-def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump_dir):
+def test_pg_dump_schema(temporary_airflow_home, task_function, dump_dir):
     """Test pg_dump and pg_restore tasks in various combinations.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.standard.operators.bash import BashOperator
     except ImportError:
         from airflow.operators.bash import BashOperator
 
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
-
     p = import_module('..postgresql', package='dlairflow.test')
 
     tf = p.__dict__[task_function]
-    test_operator = tf("login,password,host,schema", "dump_schema", dump_dir)
+    test_operator = tf("connection_name", "dump_schema", dump_dir)
 
     assert isinstance(test_operator, BashOperator)
-    assert test_operator.env['PGHOST'] == 'host'
+    assert test_operator.env['PGHOST'] == '{{ conn.get("connection_name").host }}'
     assert test_operator.params['schema'] == 'dump_schema'
     if dump_dir is None:
         assert test_operator.params['dump_dir'] == '/data0/datalab/' + os.environ['USER']
@@ -101,325 +87,285 @@ def test_pg_dump_schema(monkeypatch, temporary_airflow_home, task_function, dump
         assert test_operator.params['dump_dir'] == 'dump_dir'
 
 
-@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
-                                                  (False, 'data3'), (True, 'data3')])
-def test_q3c_index(monkeypatch, temporary_airflow_home, overwrite, tablespace):
+@pytest.mark.parametrize('schema,table,tablespace', [('q3c_schema', 'q3c_table', None),
+                                                     ('params.q3c_schema', 'params.q3c_table', None),
+                                                     ('q3c_schema', 'q3c_table', 'data3'),
+                                                     ('q3c_schema', 'q3c_table', 'params.index_tablespace')])
+def test_q3c_index(temporary_airflow_home, schema, table, tablespace):
     """Test the q3c_index function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
 
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
-
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'q3c_index'
     tf = p.__dict__[function_name]
-    test_operator = tf("login,password,host,schema", 'q3c_schema', 'q3c_table',
-                       tablespace=tablespace, overwrite=overwrite)
+    test_operator = tf("params.db_connection", schema, table,
+                       tablespace=tablespace)
     assert isinstance(test_operator, PostgresOperator)
-    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                              f'dlairflow.postgresql.{function_name}.sql'))
     assert test_operator.task_id == function_name
-    assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
-    env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
-                      keep_trailing_newline=True)
-    tmpl = env.get_template(test_operator.sql)
     if tablespace:
-        expected_render = f"""--
--- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
---
-CREATE INDEX q3c_table_q3c_ang2ipix
-    ON q3c_schema.q3c_table (q3c_ang2ipix("ra", "dec"))
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
-"""
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._q3c_tablespace %} " +
+                             "TABLESPACE {{ params._q3c_tablespace }}{%- endif -%}")
     else:
-        expected_render = f"""--
+        if_tablespace = ''
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
+    if table.startswith('params.'):
+        table = f'{{{{ {table} }}}}'
+    expected_render = f"""--
 -- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
 --
-CREATE INDEX q3c_table_q3c_ang2ipix
-    ON q3c_schema.q3c_table (q3c_ang2ipix("ra", "dec"))
-    WITH (fillfactor=100);
-CLUSTER q3c_table_q3c_ang2ipix ON q3c_schema.q3c_table;
+CREATE INDEX {table}_q3c_ang2ipix
+    ON {schema}.{table} (q3c_ang2ipix("{{{{ params._q3c_ra }}}}", "{{{{ params._q3c_dec }}}}"))
+    WITH (fillfactor=100){if_tablespace};
+CLUSTER {table}_q3c_ang2ipix ON {schema}.{table};
 """
-    assert tmpl.render(params=test_operator.params) == expected_render
+    assert test_operator.sql == expected_render
 
 
-@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
-                                                  (False, 'data3'), (True, 'data3')])
-def test_index_columns(monkeypatch, temporary_airflow_home, overwrite, tablespace):
+@pytest.mark.parametrize('schema,table,tablespace', [('ic_schema', 'ic_table', None),
+                                                     ('params.schema', 'params.table', None),
+                                                     ('ic_schema', 'ic_table', 'data3'),
+                                                     ('params.schema', 'params.table', 'params.index_tablespace')])
+def test_index_columns(temporary_airflow_home, schema, table, tablespace):
     """Test the index_columns function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
 
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
-
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'index_columns'
     tf = p.__dict__[function_name]
-    test_operator = tf("login,password,host,schema", 'test_schema', 'test_table',
+    test_operator = tf("params.db_connection", schema, table,
                        columns=['ra', 'dec',
                                 ('id', 'survey', 'program'),
                                 12345,
                                 {'test_schema.uint64': 'specobjid'}],
-                       tablespace=tablespace, overwrite=overwrite)
+                       tablespace=tablespace)
     assert isinstance(test_operator, PostgresOperator)
-    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                              f'dlairflow.postgresql.{function_name}.sql'))
     assert test_operator.task_id == function_name
-    assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
-    env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
-                      keep_trailing_newline=True)
-    tmpl = env.get_template(test_operator.sql)
     if tablespace:
-        expected_render = f"""--
--- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
---
-
-CREATE INDEX test_table_ra_idx
-    ON test_schema.test_table ("ra")
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-
-CREATE INDEX test_table_dec_idx
-    ON test_schema.test_table ("dec")
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-
-CREATE INDEX test_table_id_survey_program_idx
-    ON test_schema.test_table ("id", "survey", "program")
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-
--- Unknown type: 12345.
-
-CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
-    ON test_schema.test_table (test_schema.uint64(specobjid))
-    WITH (fillfactor=100) TABLESPACE {tablespace};
-
-
-"""
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._ic_tablespace %} " +
+                             "TABLESPACE {{ params._ic_tablespace }}{%- endif -%}")
     else:
-        expected_render = f"""--
+        if_tablespace = ''
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
+    if table.startswith('params.'):
+        table = f'{{{{ {table} }}}}'
+    expected_render = f"""--
 -- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
 --
-
-CREATE INDEX test_table_ra_idx
-    ON test_schema.test_table ("ra")
-    WITH (fillfactor=100);
-
-CREATE INDEX test_table_dec_idx
-    ON test_schema.test_table ("dec")
-    WITH (fillfactor=100);
-
-CREATE INDEX test_table_id_survey_program_idx
-    ON test_schema.test_table ("id", "survey", "program")
-    WITH (fillfactor=100);
-
--- Unknown type: 12345.
-
-CREATE_INDEX test_table_test_schema_uint64_specobjid_idx
-    ON test_schema.test_table (test_schema.uint64(specobjid))
-    WITH (fillfactor=100);
-
-
+{{% for col in params._ic_columns %}}
+{{% if col is string -%}}
+CREATE INDEX {table}_{{{{ col }}}}_idx
+    ON {schema}.{table} ("{{{{ col }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif col is mapping -%}}
+{{% for key, value in col.items() -%}}
+CREATE_INDEX {table}_{{{{ key|replace('.', '_') }}}}_{{{{ value }}}}_idx
+    ON {schema}.{table} ({{{{ key }}}}({{{{ value }}}}))
+    WITH (fillfactor=100){if_tablespace};
+{{% endfor %}}
+{{% elif col is sequence -%}}
+CREATE INDEX {table}_{{{{ col|join("_") }}}}_idx
+    ON {schema}.{table} ("{{{{ col|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ col }}}}.
+{{% endif -%}}
+{{% endfor %}}
 """
-    assert tmpl.render(params=test_operator.params) == expected_render
+    assert test_operator.sql == expected_render
 
 
-@pytest.mark.parametrize('overwrite,tablespace', [(False, None), (True, None),
-                                                  (False, 'data3'), (True, 'data3')])
-def test_primary_key(monkeypatch, temporary_airflow_home, overwrite, tablespace):
+@pytest.mark.parametrize('keys,schema,tablespace', [({'params.table': 'pk'}, None, None),
+                                                    ({'table1': 'pk'}, 'schema1', None),
+                                                    ({'params.table': 'pk'}, None, 'data3'),
+                                                    ({'table1': 'pk'}, 'schema1', 'data3'),
+                                                    ({'params.table': 'pk'}, None, 'params.index_tablespace'),
+                                                    ({'table1': 'pk'}, 'schema1', 'params.index_tablespace')])
+def test_primary_key(temporary_airflow_home, keys, schema, tablespace):
     """Test the primary_key function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
 
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
-
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'primary_key'
     tf = p.__dict__[function_name]
-    test_operator = tf("login,password,host,schema", 'test_schema',
-                       {"table1": "column1",
-                        "table2": ("column1", "column2"),
-                        "table3": 12345},
-                       tablespace=tablespace, overwrite=overwrite)
+    test_operator = tf("params.db_connection",
+                       keys,
+                       schema=schema,
+                       tablespace=tablespace)
     assert isinstance(test_operator, PostgresOperator)
-    assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                              f'dlairflow.postgresql.{function_name}.sql'))
     assert test_operator.task_id == function_name
-    assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
-    env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
-                      keep_trailing_newline=True)
-    tmpl = env.get_template(test_operator.sql)
+    if schema is None:
+        schema_name = '{{ params.schema }}'
+    else:
+        schema_name = schema
     if tablespace:
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._pk_tablespace %} USING INDEX " +
+                             "TABLESPACE {{ params._pk_tablespace }}{%- endif -%}")
+    else:
+        if_tablespace = ''
+    if 'params.table' in keys:
         expected_render = f"""--
 -- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
 --
-
-ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
-    WITH (fillfactor=100) USING INDEX TABLESPACE {tablespace};
-
-ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
-    WITH (fillfactor=100) USING INDEX TABLESPACE {tablespace};
-
--- Unknown type: 12345.
-
+{{% if params._pk_columns is string -%}}
+ALTER TABLE {schema_name}.{{{{ params.table }}}} ADD PRIMARY KEY ("{{{{ params._pk_columns }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif params._pk_columns is sequence -%}}
+ALTER TABLE {schema_name}.{{{{ params.table }}}} ADD PRIMARY KEY ("{{{{ params._pk_columns|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ params._pk_columns }}}}.
+{{% endif -%}}
 """
     else:
         expected_render = f"""--
 -- Created by dlairflow.postgresql.{function_name}().
--- Call {function_name}(..., overwrite=True) to replace this file.
 --
-
-ALTER TABLE test_schema.table1 ADD PRIMARY KEY ("column1")
-    WITH (fillfactor=100);
-
-ALTER TABLE test_schema.table2 ADD PRIMARY KEY ("column1", "column2")
-    WITH (fillfactor=100);
-
--- Unknown type: 12345.
-
+{{% for table, columns in params._pk_primary_keys.items() %}}
+{{% if columns is string -%}}
+ALTER TABLE {schema_name}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif columns is sequence -%}}
+ALTER TABLE {schema_name}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ columns }}}}.
+{{% endif -%}}
+{{% endfor %}}
 """
-    assert tmpl.render(params=test_operator.params) == expected_render
+    assert test_operator.sql == expected_render
 
 
-@pytest.mark.parametrize('tables,restart,cascade,overwrite', [('table1', False, False, True),
-                                                              (['table1', 'table2'], True, False, False),
-                                                              (['table1', 'table2'], False, True, False),
-                                                              (['table1', 'table2'], True, True, False),
-                                                              (False, False, False, False)])
-def test_truncate_table(monkeypatch, temporary_airflow_home, tables, restart, cascade, overwrite):
+@pytest.mark.parametrize('schema,tables,restart,cascade', [('schema_name', 'table1', False, False),
+                                                           (None, None, False, False),
+                                                           (None, ['table1', 'table2'], True, False),
+                                                           ('schema_name', ['table1', 'table2'], False, True),
+                                                           (None, ['table1', 'table2'], True, True),
+                                                           (None, False, False, False)])
+def test_truncate_table(temporary_airflow_home, schema, tables, restart, cascade):
     """Test the truncate_table function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
 
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
-
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'truncate_table'
     tf = p.__dict__[function_name]
-    if tables:
-        test_operator = tf("login,password,host,schema", 'test_schema', tables,
-                           restart=restart, cascade=cascade, overwrite=overwrite)
+    if tables or tables is None:
+        test_operator = tf("params.db_connection", schema, tables,
+                           restart=restart, cascade=cascade)
         assert isinstance(test_operator, PostgresOperator)
-        assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                                  f'dlairflow.postgresql.{function_name}.sql'))
         assert test_operator.task_id == function_name
-        assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
-        env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
-                          keep_trailing_newline=True)
-        tmpl = env.get_template(test_operator.sql)
-        if isinstance(tables, list):
-            st = ', '.join(['test_schema.' + t for t in tables])
+        if schema is None:
+            schema_name = '{{ params.schema }}'
         else:
-            st = 'test_schema.' + tables
+            schema_name = schema
+        if isinstance(tables, list):
+            st = ', '.join([f"{schema_name}.{t}" for t in tables])
+        elif tables is None:
+            st = f"{schema_name}.{{{{ params.table }}}}"
+        else:
+            st = f"{schema_name}.{tables}"
         expected_render = """--
 -- Created by dlairflow.postgresql.{0}().
--- Call {0}(..., overwrite=True) to replace this file.
 --
-TRUNCATE TABLE {1}
-    {2} IDENTITY
-    {3};
-""".format(function_name, st,
-           'RESTART' if restart else 'CONTINUE',
-           'CASCADE' if cascade else 'RESTRICT')
-        assert tmpl.render(params=test_operator.params) == expected_render
+TRUNCATE TABLE
+    {1}
+    {{% if params._tt_restart -%}}RESTART{{%- else -%}}CONTINUE{{%- endif %}} IDENTITY
+    {{% if params._tt_cascade -%}}CASCADE{{%- else -%}}RESTRICT{{%- endif %}};
+""".format(function_name, st)
+        assert test_operator.sql == expected_render
     else:
         with pytest.raises(ValueError) as excinfo:
             test_operator = tf("login,password,host,schema", 'test_schema', tables,
-                               restart=restart, cascade=cascade, overwrite=overwrite)
+                               restart=restart, cascade=cascade)
         assert excinfo.value.args[0] == "Unknown type for table, must be string or list-like!"
 
 
-@pytest.mark.parametrize('tables,full,overwrite', [('table1', False, False),
-                                                   (['table1', 'table2'], True, True),
-                                                   (False, False, False)])
-def test_vacuum_analyze(monkeypatch, temporary_airflow_home, tables, full, overwrite):
+@pytest.mark.parametrize('schema,tables,full', [(None, None, False),
+                                                ('schema1', None, False),
+                                                (None, 'table1', False),
+                                                ('schema1', ['table1', 'table2'], True),
+                                                (None, False, False)])
+def test_vacuum_analyze(temporary_airflow_home, schema, tables, full):
     """Test the vacuum_analyze function.
     """
     #
     # Import inside the function to avoid creating $HOME/airflow.
     #
     try:
-        from airflow.sdk.bases.hook import BaseHook
-    except ImportError:
-        from airflow.hooks.base import BaseHook
-    try:
         from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator as PostgresOperator
     except ImportError:
         from airflow.providers.postgres.operators.postgres import PostgresOperator
 
-    monkeypatch.setattr(BaseHook, "get_connection", mock_connection)
-
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'vacuum_analyze'
     tf = p.__dict__[function_name]
-    if tables:
-        test_operator = tf("login,password,host,schema", 'test_schema', tables,
-                           full=full, overwrite=overwrite)
+    if tables or tables is None:
+        test_operator = tf("params.db_connection", schema=schema, table=tables,
+                           full=full)
         assert isinstance(test_operator, PostgresOperator)
-        assert os.path.exists(str(temporary_airflow_home / 'dags' / 'sql' /
-                                  f'dlairflow.postgresql.{function_name}.sql'))
         assert test_operator.task_id == function_name
-        assert test_operator.sql == f'sql/dlairflow.postgresql.{function_name}.sql'
-        env = Environment(loader=FileSystemLoader(searchpath=str(temporary_airflow_home / 'dags')),
-                          keep_trailing_newline=True)
-        tmpl = env.get_template(test_operator.sql)
-        expected_render = """--
--- Created by dlairflow.postgresql.{0}().
--- Call {0}(..., overwrite=True) to replace this file.
+        if schema is None:
+            schema_name = '{{ params.schema }}'
+        else:
+            schema_name = schema
+        if tables is None:
+            expected_render = f"""--
+-- Created by dlairflow.postgresql.vacuum_analyze().
 --
-
-VACUUM {1} VERBOSE ANALYZE test_schema.table1;
-
-""".format(function_name, 'FULL' if full else '')
-        if full:
-            expected_render += "VACUUM FULL VERBOSE ANALYZE test_schema.table2;\n\n"
-        assert tmpl.render(params=test_operator.params) == expected_render
+VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema_name}.{{{{ params.table }}}};
+"""
+        else:
+            expected_render = """--
+-- Created by dlairflow.postgresql.vacuum_analyze().
+--
+{% for table in params._va_tables %}
+VACUUM {% if params._va_full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params._va_schema }}.{{ table }};
+{% endfor %}
+"""
+        assert test_operator.sql == expected_render
     else:
         with pytest.raises(ValueError) as excinfo:
-            test_operator = tf("login,password,host,schema", 'test_schema', tables,
-                               full=full, overwrite=overwrite)
+            test_operator = tf("login,password,host,schema", schema='test_schema',
+                               table=tables, full=full)
         assert excinfo.value.args[0] == "Unknown type for table, must be string or list-like!"

@@ -311,13 +311,20 @@ def validate_schema_file_task(*args, **kwargs):
     log = logging.getLogger('airflow.task')
     log.info(str(args))
     log.info(list(kwargs.keys()))
+    if isinstance(args[0], tuple):  # pragma: no cover
+        # See test/test_meta_tasks.py for tests of this function.
+        # Eventually we will add a test for this line.
+        filename = kwargs['task_instance'].xcom_pull(task_ids=args[0][0], key=args[0][1])
+    else:
+        filename = args[0]
+    log.info(filename)
     cleaned_kwargs = dict()
     for k in ('check_description', 'check_redundant_datatypes',
               'check_tap_table_indexes', 'check_tap_principal'):
         if k in kwargs:
             cleaned_kwargs[k] = kwargs[k]
     log.info(list(cleaned_kwargs.keys()))
-    schema = validate_schema_file(*args, **cleaned_kwargs)  # noqa: F841
+    schema = validate_schema_file(filename, **cleaned_kwargs)  # noqa: F841
     return schema
 
 

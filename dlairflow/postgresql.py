@@ -6,12 +6,6 @@ dlairflow.postgresql
 
 Standard tasks for working with PostgreSQL that can be imported into a DAG.
 """
-import os
-try:
-    from airflow.sdk.bases.hook import BaseHook
-except ImportError:
-    from airflow.hooks.base import BaseHook
-from .util import ensure_sql
 # _legacy_bash = False
 try:
     from airflow.providers.standard.operators.bash import BashOperator
@@ -40,11 +34,14 @@ def _connection_to_environment(connection):
         A dictionary suitable for passing to the ``env`` keyword on, *e.g.*
         :class:`~airflow.providers.standard.operators.bash.BashOperator`.
     """
-    conn = BaseHook.get_connection(connection)
-    env = {'PGUSER': conn.login,
-           'PGPASSWORD': conn.password,
-           'PGHOST': conn.host,
-           'PGDATABASE': conn.schema}
+    if connection.startswith('params.'):
+        conn_name = connection
+    else:
+        conn_name = f'"{connection}"'
+    env = {'PGUSER': f'{{{{ conn.get({conn_name}).login }}}}',
+           'PGPASSWORD': f'{{{{ conn.get({conn_name}).password }}}}',
+           'PGHOST': f'{{{{ conn.get({conn_name}).host }}}}',
+           'PGDATABASE': f'{{{{ conn.get({conn_name}).schema }}}}'}
     return env
 
 
@@ -83,7 +80,8 @@ def pg_dump_schema(connection, schema, dump_dir):
                         params={'schema': schema,
                                 'dump_dir': dump_dir},
                         env=pg_env,
-                        append_env=True)
+                        append_env=True,
+                        do_xcom_push=False)
 
 
 def pg_restore_schema(connection, schema, dump_dir):
@@ -110,11 +108,12 @@ def pg_restore_schema(connection, schema, dump_dir):
                         params={'schema': schema,
                                 'dump_dir': dump_dir},
                         env=pg_env,
-                        append_env=True)
+                        append_env=True,
+                        do_xcom_push=False)
 
 
 def q3c_index(connection, schema, table, ra='ra', dec='dec',
-              tablespace=None, overwrite=False):
+              tablespace=None):
     """Create a q3c index on `schema`.`table`.
 
     Parameters
@@ -131,38 +130,44 @@ def q3c_index(connection, schema, table, ra='ra', dec='dec',
         Name of the column containing Declination, default 'dec'.
     tablespace : :class:`str`, optional
         Create the index in a specific tablespace if set.
-    overwrite : :class:`bool`, optional
-        If ``True`` replace any existing SQL template file.
 
     Returns
     -------
     :class:`~airflow.providers.common.sql.operators.sql.SQLExecuteQueryOperator`
         A task to create a q3c index.
     """
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.q3c_index.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
+    if table.startswith('params.'):
+        table = f'{{{{ {table} }}}}'
+    _q3c_params = {'_q3c_ra': ra, '_q3c_dec': dec}
+    if tablespace is None:
+        if_tablespace = ''
+    else:
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._q3c_tablespace %} " +
+                             "TABLESPACE {{ params._q3c_tablespace }}{%- endif -%}")
+            _q3c_params['_q3c_tablespace'] = tablespace
+    sql_template = f"""--
 -- Created by dlairflow.postgresql.q3c_index().
--- Call q3c_index(..., overwrite=True) to replace this file.
 --
-CREATE INDEX {{ params.table }}_q3c_ang2ipix
-    ON {{ params.schema }}.{{ params.table }} (q3c_ang2ipix("{{ params.ra }}", "{{ params.dec }}"))
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
-CLUSTER {{ params.table }}_q3c_ang2ipix ON {{ params.schema }}.{{ params.table }};
+CREATE INDEX {table}_q3c_ang2ipix
+    ON {schema}.{table} (q3c_ang2ipix("{{{{ params._q3c_ra }}}}", "{{{{ params._q3c_dec }}}}"))
+    WITH (fillfactor=100){if_tablespace};
+CLUSTER {table}_q3c_ang2ipix ON {schema}.{table};
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'table': table,
-                                            'ra': ra, 'dec': dec,
-                                            'tablespace': tablespace},
+    return _PostgresOperatorWrapper(sql=sql_template,
+                                    params=_q3c_params,
                                     conn_id=connection,
                                     task_id="q3c_index")
 
 
-def index_columns(connection, schema, table, columns, tablespace=None, overwrite=False):
+def index_columns(connection, schema, table, columns, tablespace=None):
     """Create "generic" indexes for a set of columns
 
     Parameters
@@ -178,8 +183,6 @@ def index_columns(connection, schema, table, columns, tablespace=None, overwrite
         the list of columns.
     tablespace : :class:`str`, optional
         Create the indexes in a specific tablespace if set.
-    overwrite : :class:`bool`, optional
-        If ``True`` replace any existing SQL template file.
 
     Returns
     -------
@@ -196,60 +199,71 @@ def index_columns(connection, schema, table, columns, tablespace=None, overwrite
       and the value is the column that is the argument to the function.
     * Any other type in `columns` will be ignored.
     """
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.index_columns.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
+    if table.startswith('params.'):
+        table = f'{{{{ {table} }}}}'
+    _ic_params = {'_ic_columns': columns}
+    if tablespace is None:
+        if_tablespace = ''
+    else:
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._ic_tablespace %} " +
+                             "TABLESPACE {{ params._ic_tablespace }}{%- endif -%}")
+            _ic_params['_ic_tablespace'] = tablespace
+    sql_template = f"""--
 -- Created by dlairflow.postgresql.index_columns().
--- Call index_columns(..., overwrite=True) to replace this file.
 --
-{% for col in params.columns %}
-{% if col is string -%}
-CREATE INDEX {{ params.table }}_{{ col }}_idx
-    ON {{ params.schema }}.{{ params.table }} ("{{ col }}")
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% elif col is mapping -%}
-{% for key, value in col.items() -%}
-CREATE_INDEX {{ params.table }}_{{ key|replace('.', '_') }}_{{ value }}_idx
-    ON {{ params.schema }}.{{ params.table }} ({{ key }}({{ value }}))
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% endfor %}
-{% elif col is sequence -%}
-CREATE INDEX {{ params.table }}_{{ col|join("_") }}_idx
-    ON {{ params.schema }}.{{ params.table }} ("{{ col|join('", "') }}")
-    WITH (fillfactor=100){%- if params.tablespace %} TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% else -%}
--- Unknown type: {{ col }}.
-{% endif -%}
-{% endfor %}
+{{% for col in params._ic_columns %}}
+{{% if col is string -%}}
+CREATE INDEX {table}_{{{{ col }}}}_idx
+    ON {schema}.{table} ("{{{{ col }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif col is mapping -%}}
+{{% for key, value in col.items() -%}}
+CREATE_INDEX {table}_{{{{ key|replace('.', '_') }}}}_{{{{ value }}}}_idx
+    ON {schema}.{table} ({{{{ key }}}}({{{{ value }}}}))
+    WITH (fillfactor=100){if_tablespace};
+{{% endfor %}}
+{{% elif col is sequence -%}}
+CREATE INDEX {table}_{{{{ col|join("_") }}}}_idx
+    ON {schema}.{table} ("{{{{ col|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ col }}}}.
+{{% endif -%}}
+{{% endfor %}}
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema, 'table': table,
-                                            'columns': columns,
-                                            'tablespace': tablespace},
+    return _PostgresOperatorWrapper(sql=sql_template,
+                                    params=_ic_params,
                                     conn_id=connection,
                                     task_id="index_columns")
 
 
-def primary_key(connection, schema, primary_keys, tablespace=None, overwrite=False):
+def primary_key(connection, primary_keys, schema=None, tablespace=None):
     """Create a primary key on one or more tables in `schema`.
+
+    Any undefined keyword arguments are assumed to be runtime DAG parameters,
+    accessed via *e.g.*::
+
+        {{ params.schema }}.{{ params.table }}
 
     Parameters
     ----------
     connection : :class:`str`
         An Airflow database connection string.
-    schema : :class:`str`
-        The name of the database schema.
     primary_keys : :class:`dict`
-        A dictionary containing the of the table in `schema` mapped to the
+        A dictionary containing the name of the table in `schema` mapped to the
         primary key column(s). See below for details.
+    schema : :class:`str`, optional
+        The name of the database schema.
     tablespace : :class:`str`, optional
         Create the indexes in a specific tablespace if set.
-    overwrite : :class:`bool`, optional
-        If ``True`` replace any existing SQL template file.
 
     Returns
     -------
@@ -267,47 +281,75 @@ def primary_key(connection, schema, primary_keys, tablespace=None, overwrite=Fal
       - :class:`tuple`: create a primary key on the set of columns in the tuple.
       - Any other type will be ignored.
     """
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.primary_key.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema is None:
+        schema = '{{ params.schema }}'
+    _pk_params = dict()
+    if tablespace is None:
+        if_tablespace = ''
+    else:
+        if tablespace.startswith('params.'):
+            if_tablespace = (f"{{%- if {tablespace} %}} USING INDEX TABLESPACE " +
+                             f"{{{{ {tablespace} }}}}{{%- endif -%}}")
+        else:
+            if_tablespace = ("{%- if params._pk_tablespace %} USING INDEX " +
+                             "TABLESPACE {{ params._pk_tablespace }}{%- endif -%}")
+            _pk_params['_pk_tablespace'] = tablespace
+    table_names = list(primary_keys.keys())
+    if len(table_names) == 1 and table_names[0].startswith('params.'):
+        _pk_params['_pk_columns'] = primary_keys[table_names[0]]
+        sql_template = f"""--
 -- Created by dlairflow.postgresql.primary_key().
--- Call primary_key(..., overwrite=True) to replace this file.
 --
-{% for table, columns in params.primary_keys.items() %}
-{% if columns is string -%}
-ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns }}")
-    WITH (fillfactor=100){%- if params.tablespace %} USING INDEX TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% elif columns is sequence -%}
-ALTER TABLE {{ params.schema }}.{{ table }} ADD PRIMARY KEY ("{{ columns|join('", "') }}")
-    WITH (fillfactor=100){%- if params.tablespace %} USING INDEX TABLESPACE {{ params.tablespace }}{%- endif -%};
-{% else -%}
--- Unknown type: {{ columns }}.
-{% endif -%}
-{% endfor %}
+{{% if params._pk_columns is string -%}}
+ALTER TABLE {schema}.{{{{ {table_names[0]} }}}} ADD PRIMARY KEY ("{{{{ params._pk_columns }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif params._pk_columns is sequence -%}}
+ALTER TABLE {schema}.{{{{ {table_names[0]} }}}} ADD PRIMARY KEY ("{{{{ params._pk_columns|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ params._pk_columns }}}}.
+{{% endif -%}}
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema,
-                                            'primary_keys': primary_keys,
-                                            'tablespace': tablespace},
+    else:
+        _pk_params['_pk_primary_keys'] = primary_keys
+        sql_template = f"""--
+-- Created by dlairflow.postgresql.primary_key().
+--
+{{% for table, columns in params._pk_primary_keys.items() %}}
+{{% if columns is string -%}}
+ALTER TABLE {schema}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% elif columns is sequence -%}}
+ALTER TABLE {schema}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns|join('", "') }}}}")
+    WITH (fillfactor=100){if_tablespace};
+{{% else -%}}
+-- Unknown type: {{{{ columns }}}}.
+{{% endif -%}}
+{{% endfor %}}
+"""
+    return _PostgresOperatorWrapper(sql=sql_template,
+                                    params=_pk_params,
                                     conn_id=connection,
                                     task_id="primary_key")
 
 
-def truncate_table(connection, schema, table, restart=False, cascade=False,
-                   overwrite=False):
+def truncate_table(connection, schema=None, table=None, restart=False, cascade=False):
     """Run ``TRUNCATE TABLE`` on one or more tables in `schema`.
+
+    Any undefined keyword arguments are assumed to be runtime DAG parameters,
+    accessed via *e.g.*::
+
+        {{ params.schema }}.{{ params.table }}
 
     Parameters
     ----------
     connection : :class:`str`
         An Airflow database connection string.
-    schema : :class:`str`
+    schema : :class:`str`, optional
         The name of the database schema.
-    table : :class:`str` or :class:`list`
+    table : :class:`str` or :class:`list`, optional
         The table(s) to operate on.
     restart : :class:`bool`, optional
         If ``True``, any sequences associated with columns in the table(s) will
@@ -315,8 +357,6 @@ def truncate_table(connection, schema, table, restart=False, cascade=False,
     cascade : :class:`bool`, optional
         If ``True``, the ``TRUNCATE`` command will also truncate tables connected
         by foreign key relationships. *This is extrememly dangerous!*
-    overwrite : :class:`bool`, optional
-        If ``True``, replace any existing SQL template file.
 
     Returns
     -------
@@ -327,54 +367,53 @@ def truncate_table(connection, schema, table, restart=False, cascade=False,
     ------
     :exc:`ValueError`
         If `table` is not a string or list-like object.
-
     """
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema is None:
+        schema = '{{ params.schema }}'
+    if table is None:
+        table = '{{ params.table }}'
     if isinstance(table, str):
         tables = [table]
     elif isinstance(table, (list, tuple, set, frozenset)):
         tables = table
     else:
         raise ValueError("Unknown type for table, must be string or list-like!")
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.truncate_table.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    schema_tables = ", ".join([f"{schema}.{t}" for t in tables])
+    sql_template = f"""--
 -- Created by dlairflow.postgresql.truncate_table().
--- Call truncate_table(..., overwrite=True) to replace this file.
 --
-TRUNCATE TABLE {% for table in params.tables -%}
-    {{ params.schema }}.{{ table }}{{ '' if loop.last else ', ' }}
-    {%- endfor %}
-    {% if params.restart -%}RESTART{%- else -%}CONTINUE{%- endif %} IDENTITY
-    {% if params.cascade -%}CASCADE{%- else -%}RESTRICT{%- endif %};
+TRUNCATE TABLE
+    {schema_tables}
+    {{% if params._tt_restart -%}}RESTART{{%- else -%}}CONTINUE{{%- endif %}} IDENTITY
+    {{% if params._tt_cascade -%}}CASCADE{{%- else -%}}RESTRICT{{%- endif %}};
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
-                                    params={'schema': schema,
-                                            'tables': tables,
-                                            'restart': restart,
-                                            'cascade': cascade},
+    return _PostgresOperatorWrapper(sql=sql_template,
+                                    params={'_tt_restart': restart,
+                                            '_tt_cascade': cascade},
                                     conn_id=connection,
                                     task_id="truncate_table")
 
 
-def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
+def vacuum_analyze(connection, schema=None, table=None, full=False):
     """Run ``VACUUM`` and ``ANALYZE`` on one or more tables in `schema`.
+
+    Any undefined keyword arguments are assumed to be runtime DAG parameters,
+    accessed via *e.g.*::
+
+        {{ params.schema }}.{{ params.table }}
 
     Parameters
     ----------
     connection : :class:`str`
         An Airflow database connection string.
-    schema : :class:`str`
+    schema : :class:`str`, optional
         The name of the database schema.
-    table : :class:`str` or :class:`list`
+    table : :class:`str` or :class:`list`, optional
         The table(s) to operate on.
     full : :class:`bool`, optional
         If ``True``, run ``VACUUM FULL``.
-    overwrite : :class:`bool`, optional
-        If ``True`` replace any existing SQL template file.
 
     Returns
     -------
@@ -393,30 +432,37 @@ def vacuum_analyze(connection, schema, table, full=False, overwrite=False):
     transaction block. Normally a transaction block is a good thing, but ``VACUUM``
     cannot be run in a transaction block.
     """
+    if connection.startswith('params.'):
+        connection = f"{{{{ {connection} }}}}"
+    if schema is None:
+        schema = '{{ params.schema }}'
+    if table is None:
+        table = '{{ params.table }}'
     if isinstance(table, str):
         tables = [table]
     elif isinstance(table, (list, tuple, set, frozenset)):
         tables = table
     else:
         raise ValueError("Unknown type for table, must be string or list-like!")
-    sql_dir = ensure_sql()
-    sql_basename = "dlairflow.postgresql.vacuum_analyze.sql"
-    sql_file = os.path.join(sql_dir, sql_basename)
-    if overwrite or not os.path.exists(sql_file):
-        sql_data = """--
+    _va_params = {'_va_full': full}
+    if table == '{{ params.table }}':
+        sql_template = f"""--
 -- Created by dlairflow.postgresql.vacuum_analyze().
--- Call vacuum_analyze(..., overwrite=True) to replace this file.
 --
-{% for table in params.tables %}
-VACUUM {% if params.full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params.schema }}.{{ table }};
+VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema}.{table};
+"""
+    else:
+        _va_params['_va_schema'] = schema
+        _va_params['_va_tables'] = tables
+        sql_template = """--
+-- Created by dlairflow.postgresql.vacuum_analyze().
+--
+{% for table in params._va_tables %}
+VACUUM {% if params._va_full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params._va_schema }}.{{ table }};
 {% endfor %}
 """
-        with open(sql_file, 'w') as s:
-            s.write(sql_data)
-    return _PostgresOperatorWrapper(sql=f"sql/{sql_basename}",
+    return _PostgresOperatorWrapper(sql=sql_template,
                                     autocommit=True,
-                                    params={'schema': schema,
-                                            'tables': tables,
-                                            'full': full},
+                                    params=_va_params,
                                     conn_id=connection,
                                     task_id="vacuum_analyze")
