@@ -335,21 +335,16 @@ ALTER TABLE {schema}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns|join('", "')
                                     task_id="primary_key")
 
 
-def truncate_table(connection, schema=None, table=None, restart=False, cascade=False):
+def truncate_table(connection, schema, table, restart=False, cascade=False):
     """Run ``TRUNCATE TABLE`` on one or more tables in `schema`.
-
-    Any undefined keyword arguments are assumed to be runtime DAG parameters,
-    accessed via *e.g.*::
-
-        {{ params.schema }}.{{ params.table }}
 
     Parameters
     ----------
     connection : :class:`str`
         An Airflow database connection string.
-    schema : :class:`str`, optional
+    schema : :class:`str`
         The name of the database schema.
-    table : :class:`str` or :class:`list`, optional
+    table : :class:`str` or :class:`list`
         The table(s) to operate on.
     restart : :class:`bool`, optional
         If ``True``, any sequences associated with columns in the table(s) will
@@ -370,10 +365,8 @@ def truncate_table(connection, schema=None, table=None, restart=False, cascade=F
     """
     if connection.startswith('params.'):
         connection = f"{{{{ {connection} }}}}"
-    if schema is None:
-        schema = '{{ params.schema }}'
-    if table is None:
-        table = '{{ params.table }}'
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
     if isinstance(table, str):
         tables = [table]
     elif isinstance(table, (list, tuple, set, frozenset)):

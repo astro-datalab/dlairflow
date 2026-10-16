@@ -270,12 +270,11 @@ ALTER TABLE {schema_name}.{{{{ table }}}} ADD PRIMARY KEY ("{{{{ columns|join('"
     assert test_operator.sql == expected_render
 
 
-@pytest.mark.parametrize('schema,tables,restart,cascade', [('schema_name', 'table1', False, False),
-                                                           (None, None, False, False),
-                                                           (None, ['table1', 'table2'], True, False),
-                                                           ('schema_name', ['table1', 'table2'], False, True),
-                                                           (None, ['table1', 'table2'], True, True),
-                                                           (None, False, False, False)])
+@pytest.mark.parametrize('schema,tables,restart,cascade', [('schema1', 'table1', False, False),
+                                                           ('params.schema1', 'params.table1', False, False),
+                                                           ('schema1', ['table1', 'table2'], True, False),
+                                                           ('params.schema1', ['table1', 'table2'], False, True),
+                                                           ('schema1', False, False, False)])
 def test_truncate_table(temporary_airflow_home, schema, tables, restart, cascade):
     """Test the truncate_table function.
     """
@@ -290,21 +289,22 @@ def test_truncate_table(temporary_airflow_home, schema, tables, restart, cascade
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'truncate_table'
     tf = p.__dict__[function_name]
-    if tables or tables is None:
+    if tables:
         test_operator = tf("params.db_connection", schema, tables,
                            restart=restart, cascade=cascade)
         assert isinstance(test_operator, PostgresOperator)
         assert test_operator.task_id == function_name
-        if schema is None:
-            schema_name = '{{ params.schema }}'
+        if schema.startswith('params.'):
+            schema_name = f'{{{{ {schema} }}}}'
         else:
             schema_name = schema
         if isinstance(tables, list):
             st = ', '.join([f"{schema_name}.{t}" for t in tables])
-        elif tables is None:
-            st = f"{schema_name}.{{{{ params.table }}}}"
         else:
-            st = f"{schema_name}.{tables}"
+            if 'params.' in tables:
+                st = f"{schema_name}.{{{{ {tables} }}}}"
+            else:
+                st = f"{schema_name}.{tables}"
         expected_render = """--
 -- Created by dlairflow.postgresql.{0}().
 --
