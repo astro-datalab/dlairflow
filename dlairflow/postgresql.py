@@ -431,8 +431,6 @@ def vacuum_analyze(connection, schema, table, full=False):
         connection = f"{{{{ {connection} }}}}"
     if schema.startswith('params.'):
         schema = f'{{{{ {schema} }}}}'
-    if table.startswith('params.'):
-        table = f'{{{{ {table} }}}}'
     if isinstance(table, str):
         tables = [table]
     elif isinstance(table, (list, tuple, set, frozenset)):
@@ -444,7 +442,7 @@ def vacuum_analyze(connection, schema, table, full=False):
         sql_template = f"""--
 -- Created by dlairflow.postgresql.vacuum_analyze().
 --
-VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema}.{table};
+VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema}.{{{{ {table} }}}};
 """
     else:
         _va_params['_va_tables'] = tables

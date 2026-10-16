@@ -352,7 +352,7 @@ def test_vacuum_analyze(temporary_airflow_home, schema, tables, full):
             expected_render = f"""--
 -- Created by dlairflow.postgresql.vacuum_analyze().
 --
-VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema_name}.{tables};
+VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema_name}.{{{{ {tables} }}}};
 """
         else:
             expected_render = f"""--
