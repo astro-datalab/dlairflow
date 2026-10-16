@@ -368,7 +368,10 @@ def truncate_table(connection, schema, table, restart=False, cascade=False):
     if schema.startswith('params.'):
         schema = f'{{{{ {schema} }}}}'
     if isinstance(table, str):
-        tables = [table]
+        if table.startswith('params.'):
+            tables = [f"{{{{ {table} }}}}"]
+        else:
+            tables = [table]
     elif isinstance(table, (list, tuple, set, frozenset)):
         tables = table
     else:
