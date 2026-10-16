@@ -202,8 +202,10 @@ CREATE INDEX {table}_{{{{ col|join("_") }}}}_idx
                                                     ({'table1': 'pk'}, 'params.schema1', None),
                                                     ({'params.table': 'pk'}, 'schema1', 'data3'),
                                                     ({'table1': 'pk'}, 'params.schema1', 'data3'),
-                                                    ({'params.table': 'pk'}, 'schema1', 'params.index_tablespace'),
-                                                    ({'table1': 'pk'}, 'params.schema1', 'params.index_tablespace')])
+                                                    ({'params.table': 'pk'}, 'schema1',
+                                                     'params.index_tablespace'),
+                                                    ({'table1': 'pk'}, 'params.schema1',
+                                                     'params.index_tablespace')])
 def test_primary_key(temporary_airflow_home, keys, schema, tablespace):
     """Test the primary_key function.
     """
@@ -222,8 +224,8 @@ def test_primary_key(temporary_airflow_home, keys, schema, tablespace):
                        tablespace=tablespace)
     assert isinstance(test_operator, PostgresOperator)
     assert test_operator.task_id == function_name
-    if schema is None:
-        schema_name = '{{ params.schema }}'
+    if schema.startswith('params.'):
+        schema_name = f'{{{{ {schema} }}}}'
     else:
         schema_name = schema
     if tablespace:
