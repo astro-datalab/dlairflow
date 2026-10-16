@@ -245,23 +245,18 @@ CREATE INDEX {table}_{{{{ col|join("_") }}}}_idx
                                     task_id="index_columns")
 
 
-def primary_key(connection, primary_keys, schema=None, tablespace=None):
+def primary_key(connection, schema, primary_keys, tablespace=None):
     """Create a primary key on one or more tables in `schema`.
-
-    Any undefined keyword arguments are assumed to be runtime DAG parameters,
-    accessed via *e.g.*::
-
-        {{ params.schema }}.{{ params.table }}
 
     Parameters
     ----------
     connection : :class:`str`
         An Airflow database connection string.
+    schema : :class:`str`
+        The name of the database schema.
     primary_keys : :class:`dict`
         A dictionary containing the name of the table in `schema` mapped to the
         primary key column(s). See below for details.
-    schema : :class:`str`, optional
-        The name of the database schema.
     tablespace : :class:`str`, optional
         Create the indexes in a specific tablespace if set.
 
@@ -283,8 +278,8 @@ def primary_key(connection, primary_keys, schema=None, tablespace=None):
     """
     if connection.startswith('params.'):
         connection = f"{{{{ {connection} }}}}"
-    if schema is None:
-        schema = '{{ params.schema }}'
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
     _pk_params = dict()
     if tablespace is None:
         if_tablespace = ''

@@ -198,12 +198,12 @@ CREATE INDEX {table}_{{{{ col|join("_") }}}}_idx
     assert test_operator.sql == expected_render
 
 
-@pytest.mark.parametrize('keys,schema,tablespace', [({'params.table': 'pk'}, None, None),
-                                                    ({'table1': 'pk'}, 'schema1', None),
-                                                    ({'params.table': 'pk'}, None, 'data3'),
-                                                    ({'table1': 'pk'}, 'schema1', 'data3'),
-                                                    ({'params.table': 'pk'}, None, 'params.index_tablespace'),
-                                                    ({'table1': 'pk'}, 'schema1', 'params.index_tablespace')])
+@pytest.mark.parametrize('keys,schema,tablespace', [({'params.table': 'pk'}, 'schema1', None),
+                                                    ({'table1': 'pk'}, 'params.schema1', None),
+                                                    ({'params.table': 'pk'}, 'schema1', 'data3'),
+                                                    ({'table1': 'pk'}, 'params.schema1', 'data3'),
+                                                    ({'params.table': 'pk'}, 'schema1', 'params.index_tablespace'),
+                                                    ({'table1': 'pk'}, 'params.schema1', 'params.index_tablespace')])
 def test_primary_key(temporary_airflow_home, keys, schema, tablespace):
     """Test the primary_key function.
     """
@@ -218,9 +218,7 @@ def test_primary_key(temporary_airflow_home, keys, schema, tablespace):
     p = import_module('..postgresql', package='dlairflow.test')
     function_name = 'primary_key'
     tf = p.__dict__[function_name]
-    test_operator = tf("params.db_connection",
-                       keys,
-                       schema=schema,
+    test_operator = tf("params.db_connection", schema, keys,
                        tablespace=tablespace)
     assert isinstance(test_operator, PostgresOperator)
     assert test_operator.task_id == function_name
