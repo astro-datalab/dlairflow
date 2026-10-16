@@ -321,11 +321,10 @@ TRUNCATE TABLE
         assert excinfo.value.args[0] == "Unknown type for table, must be string or list-like!"
 
 
-@pytest.mark.parametrize('schema,tables,full', [(None, None, False),
-                                                ('schema1', None, False),
-                                                (None, 'table1', False),
+@pytest.mark.parametrize('schema,tables,full', [('schema1', 'table1', False),
+                                                ('params.schema1', 'params.table1', False),
                                                 ('schema1', ['table1', 'table2'], True),
-                                                (None, False, False)])
+                                                ('schema1', False, False)])
 def test_vacuum_analyze(temporary_airflow_home, schema, tables, full):
     """Test the vacuum_analyze function.
     """
@@ -341,31 +340,31 @@ def test_vacuum_analyze(temporary_airflow_home, schema, tables, full):
     function_name = 'vacuum_analyze'
     tf = p.__dict__[function_name]
     if tables or tables is None:
-        test_operator = tf("params.db_connection", schema=schema, table=tables,
+        test_operator = tf("params.db_connection", schema, tables,
                            full=full)
         assert isinstance(test_operator, PostgresOperator)
         assert test_operator.task_id == function_name
-        if schema is None:
-            schema_name = '{{ params.schema }}'
+        if schema.startswith('params.'):
+            schema_name = f'{{{{ {schema} }}}}'
         else:
             schema_name = schema
-        if tables is None:
+        if 'params.' in tables:
             expected_render = f"""--
 -- Created by dlairflow.postgresql.vacuum_analyze().
 --
-VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema_name}.{{{{ params.table }}}};
+VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema_name}.{tables};
 """
         else:
-            expected_render = """--
+            expected_render = f"""--
 -- Created by dlairflow.postgresql.vacuum_analyze().
 --
-{% for table in params._va_tables %}
-VACUUM {% if params._va_full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params._va_schema }}.{{ table }};
-{% endfor %}
+{{% for table in params._va_tables %}}
+VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema_name}.{{{{ table }}}};
+{{% endfor %}}
 """
         assert test_operator.sql == expected_render
     else:
         with pytest.raises(ValueError) as excinfo:
-            test_operator = tf("login,password,host,schema", schema='test_schema',
-                               table=tables, full=full)
+            test_operator = tf("login,password,host,schema", schema, tables,
+                               full=full)
         assert excinfo.value.args[0] == "Unknown type for table, must be string or list-like!"

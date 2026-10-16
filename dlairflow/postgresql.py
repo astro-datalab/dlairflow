@@ -168,7 +168,7 @@ CLUSTER {table}_q3c_ang2ipix ON {schema}.{table};
 
 
 def index_columns(connection, schema, table, columns, tablespace=None):
-    """Create "generic" indexes for a set of columns
+    """Create "generic" indexes for a set of columns.
 
     Parameters
     ----------
@@ -396,21 +396,16 @@ TRUNCATE TABLE
                                     task_id="truncate_table")
 
 
-def vacuum_analyze(connection, schema=None, table=None, full=False):
+def vacuum_analyze(connection, schema, table, full=False):
     """Run ``VACUUM`` and ``ANALYZE`` on one or more tables in `schema`.
-
-    Any undefined keyword arguments are assumed to be runtime DAG parameters,
-    accessed via *e.g.*::
-
-        {{ params.schema }}.{{ params.table }}
 
     Parameters
     ----------
     connection : :class:`str`
         An Airflow database connection string.
-    schema : :class:`str`, optional
+    schema : :class:`str`
         The name of the database schema.
-    table : :class:`str` or :class:`list`, optional
+    table : :class:`str` or :class:`list`
         The table(s) to operate on.
     full : :class:`bool`, optional
         If ``True``, run ``VACUUM FULL``.
@@ -434,10 +429,10 @@ def vacuum_analyze(connection, schema=None, table=None, full=False):
     """
     if connection.startswith('params.'):
         connection = f"{{{{ {connection} }}}}"
-    if schema is None:
-        schema = '{{ params.schema }}'
-    if table is None:
-        table = '{{ params.table }}'
+    if schema.startswith('params.'):
+        schema = f'{{{{ {schema} }}}}'
+    if table.startswith('params.'):
+        table = f'{{{{ {table} }}}}'
     if isinstance(table, str):
         tables = [table]
     elif isinstance(table, (list, tuple, set, frozenset)):
@@ -445,21 +440,20 @@ def vacuum_analyze(connection, schema=None, table=None, full=False):
     else:
         raise ValueError("Unknown type for table, must be string or list-like!")
     _va_params = {'_va_full': full}
-    if table == '{{ params.table }}':
+    if 'params.' in table:
         sql_template = f"""--
 -- Created by dlairflow.postgresql.vacuum_analyze().
 --
 VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema}.{table};
 """
     else:
-        _va_params['_va_schema'] = schema
         _va_params['_va_tables'] = tables
-        sql_template = """--
+        sql_template = f"""--
 -- Created by dlairflow.postgresql.vacuum_analyze().
 --
-{% for table in params._va_tables %}
-VACUUM {% if params._va_full -%}FULL{%- endif %} VERBOSE ANALYZE {{ params._va_schema }}.{{ table }};
-{% endfor %}
+{{% for table in params._va_tables %}}
+VACUUM {{% if params._va_full -%}}FULL{{%- endif %}} VERBOSE ANALYZE {schema}.{{{{ table }}}};
+{{% endfor %}}
 """
     return _PostgresOperatorWrapper(sql=sql_template,
                                     autocommit=True,
